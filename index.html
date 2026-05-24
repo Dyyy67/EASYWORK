@@ -1696,9 +1696,8 @@ async function fetchAIPrompt(prompt, maxTokens = 4096) {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
       body: JSON.stringify({
         model: 'mistral-small-latest', max_tokens: maxTokens, temperature: 0.7,
-        response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: 'You are a JSON-only API. Output ONLY raw valid JSON with no markdown, no backticks, no explanations, no text before or after the JSON object.' },
+          { role: 'system', content: 'Return only valid JSON, no markdown, no backticks.' },
           { role: 'user', content: prompt },
         ],
       }),
@@ -1722,12 +1721,12 @@ async function fetchAIPrompt(prompt, maxTokens = 4096) {
     const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
     const body = {
       model, max_tokens: maxTokens, temperature: 0.7,
-      response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: 'You are a JSON-only API. Output ONLY raw valid JSON with no markdown, no backticks, no explanations, no text before or after the JSON object.' },
+        { role: 'system', content: 'Return only valid JSON, no markdown, no backticks.' },
         { role: 'user', content: prompt },
       ],
     };
+    if (provider === 'openai') body.response_format = { type: 'json_object' };
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
@@ -2207,57 +2206,11 @@ Use accurate Philippine K-12 curriculum competencies. Use real textbook referenc
 }
 
 function parseAIJson(raw){
-  // Strip markdown code fences
-  let js = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-
-  // 1. Try parsing as-is first
-  try { return JSON.parse(js); } catch(_){}
-
-  // 2. Try extracting outermost { ... } (object)
-  const os = js.indexOf('{'), oe = js.lastIndexOf('}');
-  if(os !== -1 && oe > os){
-    try { return JSON.parse(js.slice(os, oe+1)); } catch(_){}
-  }
-
-  // 3. Try extracting outermost [ ... ] (array — Mistral/Groq sometimes return bare arrays)
-  const as = js.indexOf('['), ae = js.lastIndexOf(']');
-  if(as !== -1 && ae > as){
-    try {
-      const arr = JSON.parse(js.slice(as, ae+1));
-      // Wrap in the expected shape so applyResult works
-      if(Array.isArray(arr)){
-        // Could be array of subject objects OR array containing a subjects object
-        if(arr.length && arr[0] && typeof arr[0].area === 'string'){
-          return { subjects: arr };
-        }
-        return { subjects: arr };
-      }
-    } catch(_){}
-  }
-
-  // 4. Try to find any valid JSON substring (object or array) via progressive scan
-  for(let i=0;i<js.length;i++){
-    if(js[i]==='{' || js[i]==='['){
-      const closing = js[i]==='{' ? '}' : ']';
-      let depth=0, j=i;
-      for(;j<js.length;j++){
-        if(js[j]===js[i]) depth++;
-        else if(js[j]===closing) { depth--; if(depth===0) break; }
-      }
-      if(j<js.length){
-        try {
-          const parsed = JSON.parse(js.slice(i, j+1));
-          if(Array.isArray(parsed) && parsed.length && parsed[0].area){
-            return { subjects: parsed };
-          }
-          return parsed;
-        } catch(_){}
-      }
-    }
-  }
-
+  let js = raw.replace(/```json|```/g,'').trim();
+  const s=js.indexOf('{'), e=js.lastIndexOf('}');
+  if(s!==-1&&e!==-1) js=js.slice(s,e+1);
   if(!js) throw new Error('AI returned empty content. Try again.');
-  throw new Error('AI response format error. Please try generating again.');
+  return JSON.parse(js);
 }
 
 async function callAI(apiKey, topic, subjects, grade, quarter){
@@ -2299,9 +2252,8 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
       body:JSON.stringify({
         model:'mistral-small-latest', max_tokens:8192, temperature:0.7,
-        response_format:{type:'json_object'},
         messages:[
-          {role:'system',content:'You are a JSON-only API. Output ONLY raw valid JSON with no markdown, no backticks, no explanations, no text before or after the JSON object.'},
+          {role:'system',content:'Return only valid JSON, no markdown, no backticks.'},
           {role:'user',content:prompt}
         ]
       })
@@ -2325,8 +2277,8 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
       : 'https://api.openai.com/v1/chat/completions';
     const model = provider==='groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
     const body = {model, max_tokens:8192, temperature:0.7,
-      response_format:{type:'json_object'},
-      messages:[{role:'system',content:'You are a JSON-only API. Output ONLY raw valid JSON with no markdown, no backticks, no explanations, no text before or after the JSON object.'},{role:'user',content:prompt}]};
+      messages:[{role:'system',content:'Return only valid JSON, no markdown, no backticks.'},{role:'user',content:prompt}]};
+    if(provider==='openai') body.response_format={type:'json_object'};
     const resp = await fetch(url,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
@@ -2498,8 +2450,7 @@ Return this exact JSON structure (one subject only):
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
         body:JSON.stringify({model:'mistral-small-latest', max_tokens:4096, temperature:0.7,
-          response_format:{type:'json_object'},
-          messages:[{role:'system',content:'You are a JSON-only API. Output ONLY raw valid JSON with no markdown, no backticks, no explanations, no text before or after the JSON object.'},{role:'user',content:prompt}]})
+          messages:[{role:'system',content:'Return only valid JSON, no markdown, no backticks.'},{role:'user',content:prompt}]})
       });
       if(!resp.ok){
         const errData=await resp.json().catch(()=>({}));
@@ -2518,8 +2469,8 @@ Return this exact JSON structure (one subject only):
         : 'https://api.openai.com/v1/chat/completions';
       const model = provider==='groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
       const body = {model, max_tokens:4096, temperature:0.7,
-        response_format:{type:'json_object'},
-        messages:[{role:'system',content:'You are a JSON-only API. Output ONLY raw valid JSON with no markdown, no backticks, no explanations, no text before or after the JSON object.'},{role:'user',content:prompt}]};
+        messages:[{role:'system',content:'Return only valid JSON, no markdown, no backticks.'},{role:'user',content:prompt}]};
+      if(provider==='openai') body.response_format={type:'json_object'};
       resp = await fetch(url,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
@@ -2611,16 +2562,7 @@ Return this exact JSON structure (one subject only):
 }
 
 function applyResult(result){
-  // Normalize: handle {subjects:[...]}, [...], or a single subject object
-  let generated = [];
-  if(Array.isArray(result)) {
-    generated = result;
-  } else if(Array.isArray(result.subjects)) {
-    generated = result.subjects;
-  } else if(result.area) {
-    // Single subject object returned directly
-    generated = [result];
-  }
+  const generated = result.subjects||[];
   generated.forEach(gen=>{
     const idx=state.rows.findIndex(r=>{
       const ra=(r.area||'').toLowerCase(), ga=(gen.area||'').toLowerCase();
@@ -2639,6 +2581,7 @@ function handleApiError(e){
   console.error('AI Error:', e);
   const msg = e.message || '';
   if(msg === 'QUOTA'){
+    // markQuota already called; check if all exhausted
     const allHit = mkKeys.length > 0 && mkKeys.every(k=>k.quotaHit);
     if(allHit){
       document.getElementById('quotaBanner').classList.add('show');
@@ -2649,60 +2592,13 @@ function handleApiError(e){
     }
   } else if(msg.includes('API_KEY_INVALID')||msg.includes('API key not valid')||msg.includes('Unauthorized')||msg.includes('401')){
     const _akObj=mkKeys[mkActive]||{}; const _prov=feDetectProvider(_akObj.key||'',_akObj.provider||''); const _pName={gemini:'Gemini',openai:'OpenAI',groq:'Groq',cohere:'Cohere',mistral:'Mistral',deepseek:'DeepSeek',nvidia:'NVIDIA',together:'Together AI',openrouter:'OpenRouter',custom:'Custom'}[_prov]||'API'; toast('❌ Invalid API key. Please check your '+_pName+' key.','te');
-  } else if(msg.includes('format error')||msg.includes('SyntaxError')||msg.includes('JSON')||msg.includes('format')){
-    showLessonPlanRetry('AI response could not be parsed. This sometimes happens with certain providers. Click Retry to try again.');
+  } else if(msg.includes('SyntaxError')||msg.includes('JSON')){
+    toast('⚠️ AI response format error. Please try generating again.','te');
   } else if(msg.includes('Failed to fetch')||msg.includes('NetworkError')){
     toast('❌ Network error. Check your internet connection.','te');
   } else {
-    showLessonPlanRetry('Generation failed: ' + msg);
+    toast('❌ Error: ' + msg, 'te');
   }
-}
-
-/* ─── Lesson Plan Retry UI ─── */
-function showLessonPlanRetry(reason){
-  const existing = document.getElementById('lpRetryBanner');
-  if(existing) existing.remove();
-
-  const banner = document.createElement('div');
-  banner.id = 'lpRetryBanner';
-  banner.style.cssText = `
-    margin-top:12px;padding:14px 18px;border-radius:10px;
-    background:linear-gradient(135deg,#FFF3E0,#FBE9E7);
-    border:1.5px solid #FFCCBC;display:flex;align-items:center;
-    gap:14px;flex-wrap:wrap;animation:su .3s ease;
-  `;
-  banner.innerHTML = `
-    <div style="font-size:20px;flex-shrink:0;">⚠️</div>
-    <div style="flex:1;min-width:180px;">
-      <div style="font-size:13px;font-weight:800;color:#BF360C;margin-bottom:3px;">Generation Failed</div>
-      <div style="font-size:12px;color:#6B7A9C;line-height:1.5;">${reason}</div>
-    </div>
-    <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;">
-      <button class="btn bp" style="font-size:12px;padding:8px 16px;"
-        onclick="document.getElementById('lpRetryBanner').remove();generateAll();">
-        🔄 Retry Generation
-      </button>
-      <button class="btn bo" style="font-size:12px;padding:8px 16px;"
-        onclick="document.getElementById('lpRetryBanner').remove();">
-        ✕ Dismiss
-      </button>
-    </div>
-  `;
-
-  // Insert after the progress bar section (inside the generate card)
-  const gp = document.getElementById('gp');
-  if(gp && gp.parentNode){
-    gp.parentNode.insertBefore(banner, gp.nextSibling);
-  } else {
-    // Fallback: insert before the lesson table card
-    const tableCard = document.getElementById('lt');
-    if(tableCard && tableCard.closest('.card')){
-      tableCard.closest('.card').before(banner);
-    }
-  }
-
-  // Also show a toast for instant feedback
-  toast('⚠️ Generation failed. Use the Retry button in the lesson plan section.','te');
 }
 
 /* ════════════════════════════════
@@ -3946,39 +3842,72 @@ Rules:
 
 /* feDetectProvider moved to top of script */
 
-/* Single raw API call — returns text string */
+/* Single raw API call — returns text string.
+   Throws Error('QUOTA') ONLY when the API confirms a real rate-limit/quota (HTTP 429
+   or the provider's documented quota error codes). All other errors are thrown as
+   plain Error(message) so they do NOT trigger false quota-hit marking. */
 async function feRawCall(prompt, apiKey, provider){
   const SYS = 'You are a test-question generator. Return ONLY a valid JSON array with no markdown, no backticks, no extra text before or after the array.';
+
+  /* Helper: decides if an HTTP error response is a REAL quota/rate-limit.
+     Only returns true on HTTP 429 OR specific quota-related error codes from each provider. */
+  function isRealQuota(status, errBody){
+    if(status === 429) return true;
+    const code = String(errBody?.error?.code || errBody?.error?.type || '').toLowerCase();
+    const msg  = String(errBody?.error?.message || errBody?.message || '').toLowerCase();
+    // Only flag quota on very specific signals — NOT generic "quota" mentions
+    return (
+      code.includes('rate_limit_exceeded') ||
+      code.includes('insufficient_quota') ||
+      code.includes('quota_exceeded') ||
+      msg.includes('rate limit exceeded') ||
+      msg.includes('insufficient_quota') ||
+      msg.includes('you exceeded your current quota') ||
+      msg.includes('requests per minute') ||
+      msg.includes('tokens per minute') ||
+      msg.includes('too many requests')
+    );
+  }
 
   if(provider === 'openai'){
     const r = await fetch('https://api.openai.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
       body:JSON.stringify({ model:'gpt-4o-mini', max_tokens:4096, temperature:0.7,
+        response_format:{type:'json_object'},
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.error?.message||'HTTP '+r.status; if(r.status===429||m.includes('quota'))markQuota(apiKey); throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||'HTTP '+r.status);
+    }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'groq'){
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
       body:JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:4096, temperature:0.7,
+        response_format:{type:'json_object'},
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.error?.message||'HTTP '+r.status; if(r.status===429)markQuota(apiKey); throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||'HTTP '+r.status);
+    }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'deepseek'){
     const r = await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
       body:JSON.stringify({ model:'deepseek-chat', max_tokens:2048, temperature:0.7,
-        messages:[{role:'system',content:'Return only valid JSON, no markdown, no backticks.'},{role:'user',content:prompt}] })
+        messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
-      const m=e.error?.message||'HTTP '+r.status;
-      if(r.status===401) throw new Error('Unauthorized');
-      throw new Error('DeepSeek: '+m);
+      if(r.status===401) throw new Error('Unauthorized — check your DeepSeek key.');
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||'DeepSeek HTTP '+r.status);
     }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
@@ -3986,9 +3915,15 @@ async function feRawCall(prompt, apiKey, provider){
     const r = await fetch('https://api.mistral.ai/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
       body:JSON.stringify({ model:'mistral-small-latest', max_tokens:4096, temperature:0.7,
+        response_format:{type:'json_object'},
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.error?.message||'HTTP '+r.status; throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(r.status===401) throw new Error('Unauthorized — check your Mistral key.');
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||e.message||'Mistral HTTP '+r.status);
+    }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'openrouter'){
@@ -4002,8 +3937,8 @@ async function feRawCall(prompt, apiKey, provider){
       const e=await r.json().catch(()=>({}));
       const rawMeta = e.error?.metadata?.raw;
       const inner = rawMeta ? (() => { try { return JSON.parse(rawMeta); } catch(_){ return null; } })() : null;
-      const m = inner?.error?.message || e.error?.message || 'HTTP '+r.status;
-      throw new Error('OpenRouter: ' + m);
+      if(isRealQuota(r.status, inner||e)) throw new Error('QUOTA');
+      throw new Error(inner?.error?.message || e.error?.message || 'OpenRouter HTTP '+r.status);
     }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
@@ -4013,7 +3948,11 @@ async function feRawCall(prompt, apiKey, provider){
       body:JSON.stringify({ model:'meta/llama-3.1-70b-instruct', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.error?.message||'HTTP '+r.status; if(r.status===429)markQuota(apiKey); throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||'NVIDIA HTTP '+r.status);
+    }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'together'){
@@ -4022,7 +3961,11 @@ async function feRawCall(prompt, apiKey, provider){
       body:JSON.stringify({ model:'meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.error?.message||'HTTP '+r.status; throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||'Together HTTP '+r.status);
+    }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'cohere'){
@@ -4031,19 +3974,27 @@ async function feRawCall(prompt, apiKey, provider){
       body:JSON.stringify({ model:'command-r-plus', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.message||'HTTP '+r.status; if(r.status===429)markQuota(apiKey); throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.message||'Cohere HTTP '+r.status);
+    }
     const d=await r.json(); return d.message?.content?.[0]?.text||'';
 
   } else if(provider === 'custom'){
     const baseUrl = (document.getElementById('mkCustomUrl')?.value||'').replace(/\/$/,'');
     const model   = document.getElementById('mkCustomModel')?.value||'default';
-    if(!baseUrl) throw new Error('Custom provider: no base URL set.');
+    if(!baseUrl) throw new Error('Custom provider: no base URL configured.');
     const r = await fetch(baseUrl+'/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
       body:JSON.stringify({ model, max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.error?.message||'HTTP '+r.status; throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||'Custom API HTTP '+r.status);
+    }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else {
@@ -4056,10 +4007,14 @@ async function feRawCall(prompt, apiKey, provider){
         generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'}
       })
     });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); const m=e.error?.message||'HTTP '+r.status; if(r.status===429)markQuota(apiKey); throw new Error(m); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      if(isRealQuota(r.status,e)) throw new Error('QUOTA');
+      throw new Error(e.error?.message||'Gemini HTTP '+r.status);
+    }
     const d=await r.json();
     try{ return d.candidates[0].content.parts[0].text||''; }
-    catch(_){ throw new Error('Unexpected Gemini response structure: '+JSON.stringify(d).slice(0,200)); }
+    catch(_){ throw new Error('Unexpected Gemini response: '+JSON.stringify(d).slice(0,200)); }
   }
 }
 
@@ -4132,21 +4087,20 @@ async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipi
           await new Promise(r => setTimeout(r, 800));
 
       } catch(e){
-        const msg = (e.message||'').toLowerCase();
-        const isQuota = msg.includes('429') || msg.includes('quota') ||
-                        msg.includes('rate_limit') || msg.includes('rate limit') ||
-                        msg.includes('insufficient_quota') || msg.includes('too many');
+        const isQuota = e.message === 'QUOTA'; // ONLY the typed signal from feRawCall
 
         if(isQuota){
           /* Mark this key as quota-hit and rotate */
-          const rotated = markQuota(apiKey);
+          markQuota(apiKey);
           keyExhausted  = true;
           keyRotates++;
 
-          if(rotated){
+          /* Check if there's still another valid key available */
+          const nextKey = getActiveKey();
+          if(nextKey && nextKey !== apiKey){
             /* Pause generation visually, then auto-resume after brief delay */
             const nextName = mkKeys[mkActive]?.name || 'next key';
-            feGenPause(`⚠️ Quota hit. Rotating to "${nextName}"… resuming in 3s`);
+            feGenPause(`⚠️ Real quota hit confirmed. Rotating to "${nextName}"… resuming in 3s`);
             await new Promise(r => setTimeout(r, 3000));
             feGenResume();
           } else {
@@ -4157,8 +4111,10 @@ async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipi
           }
         } else if(attempts >= MAX_ATTEMPTS){
           /* Non-quota error, out of retries — skip with placeholder */
+          console.warn('feCallAnthropicAPI non-quota error after max attempts:', e.message);
           break;
         } else {
+          console.warn('feCallAnthropicAPI non-quota error, will retry:', e.message);
           await new Promise(r => setTimeout(r, 1000));
         }
       }
