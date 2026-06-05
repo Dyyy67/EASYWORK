@@ -632,15 +632,15 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
       <div style="display:flex;flex-wrap:wrap;gap:10px;">
         <div class="fgrp" style="min-width:120px;flex:1;">
           <label class="flbl">Part I — True or False</label>
-          <input class="fc" id="prelimTF" type="number" value="20" min="0" max="50" style="text-align:center;">
+          <input class="fc" id="prelimTF" type="number" value="20" min="0" max="80" style="text-align:center;">
         </div>
         <div class="fgrp" style="min-width:120px;flex:1;">
           <label class="flbl">Part II — Word Bank / Fill</label>
-          <input class="fc" id="prelimWB" type="number" value="10" min="0" max="30" style="text-align:center;">
+          <input class="fc" id="prelimWB" type="number" value="10" min="0" max="80" style="text-align:center;">
         </div>
         <div class="fgrp" style="min-width:120px;flex:1;">
           <label class="flbl">Part III — Essay (items)</label>
-          <input class="fc" id="prelimEssay" type="number" value="2" min="0" max="10" style="text-align:center;">
+          <input class="fc" id="prelimEssay" type="number" value="2" min="0" max="80" style="text-align:center;">
         </div>
       </div>
     </div>
@@ -1566,7 +1566,7 @@ function renderSummativesTable() {
       <td><strong style="color:#E65100;font-size:12px;">${esc(row.area)}</strong><br>${langBadge}</td>
       <td><div class="obj-snippet">${objSnippet}</div></td>
       <td style="text-align:center;">
-        <input type="number" class="sum-items-inp" min="3" max="50" value="${sm.itemCount || 10}"
+        <input type="number" class="sum-items-inp" min="3" max="80" value="${sm.itemCount || 10}"
           onchange="setSummativeItems(${i}, this.value)" title="Number of test items (split across both types)">
       </td>
       <td>
@@ -1588,7 +1588,7 @@ function renderSummativesTable() {
 
 function setSummativeItems(i, val) {
   ensureSummatives();
-  const n = Math.min(50, Math.max(3, parseInt(val, 10) || 10));
+  const n = Math.min(80, Math.max(3, parseInt(val, 10) || 10));
   state.summatives[i].itemCount = n;
   debounceSave();
 }
