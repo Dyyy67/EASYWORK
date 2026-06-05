@@ -1618,53 +1618,62 @@ function buildSummativePrompt(row, itemCount, testTypes) {
   const typeInstructions = types.map((t, idx) => {
     const n = types.length === 2 ? (idx === 0 ? countA : countB) : itemCount;
     const hints = {
-      'True or False': 'Statements students mark T or F; include a clear instruction line.',
-      'Matching Type': 'Two columns (Column A and Column B) with items to match; show both columns in the prompt.',
-      'Word Bank': 'Provide a word bank list, then items where students use those words to complete sentences or labels.',
-      'Identification': 'Name, term, or short phrase answers (one word or short phrase expected).',
-      'Fill in the Blanks': 'Sentences with blanks; students supply the missing word(s).',
-      'Short Answer': 'Brief written responses (1–3 sentences max for Grades 4–6).',
-      'Essay / Extended Response': 'One or two extended prompts with clear rubric hints; keep scope small for elementary.',
-      'Performance Task': 'Hands-on or classroom task with observable criteria.',
-      'Problem Solving': 'Show steps or explain solution; numbers suited to the grade band.',
-      'Oral Recitation': 'Prompts suitable for oral response in class.',
-      'Practical Test': 'Procedure or skill demonstration with simple steps.',
+      'True or False': 'Write ' + n + ' clear factual statements pupils mark as True or False. Each prompt is a complete statement. The answer must be exactly True or False.',
+      'Matching Type': 'Generate exactly ' + n + ' matching pairs. For EACH item: prompt = Column A entry (term or question), columnB = the correct Column B match (definition or answer). Also copy the Column B text into answer. Never merge both columns into one field.',
+      'Word Bank': 'Include a top-level wordBank array with ' + n + ' answer words plus 3 extra distractors. Each item prompt is a sentence with _______ for the blank. answer is the correct word from the bank.',
+      'Identification': 'Write ' + n + ' clue sentences or descriptions. answer is the specific word, name, or short phrase (1-4 words) that identifies what is described.',
+      'Fill in the Blanks': 'Write ' + n + ' sentences each with exactly one blank (_______). answer is the word or short phrase that correctly fills the blank.',
+      'Short Answer': 'Write ' + n + ' open-ended questions. answer contains a model answer in 1-2 sentences.',
+      'Essay / Extended Response': 'Write ' + n + ' essay prompts suited to elementary level. answer contains a model answer outline in 2-4 sentences.',
+      'Performance Task': 'Write ' + n + ' task instructions with observable criteria. answer describes the expected output.',
+      'Problem Solving': 'Write ' + n + ' problems with clear steps. answer shows the correct solution with working.',
+      'Oral Recitation': 'Write ' + n + ' prompts for oral response. answer contains the expected spoken response.',
+      'Practical Test': 'Write ' + n + ' skill demonstration instructions. answer describes the correct procedure.',
     };
-    return `  • "${t}": exactly ${n} item(s). ${hints[t] || 'Follow standard format for this type.'}`;
+    return '  \u2022 "' + t + '": ' + (hints[t] || ('Exactly ' + n + ' items. Follow standard format.'));
   }).join('\n');
+
+  const matchingType = types.includes('Matching Type');
+  const wordBankType = types.includes('Word Bank');
 
   return `You are an expert Filipino elementary school assessment writer for ${school}.
 Return ONLY raw valid JSON. No markdown, no backticks, no explanation.
 
 Create a SUMMATIVE ASSESSMENT for:
 - Subject / Learning Area: ${row.area}
-- Target learners: ${gradeDisplay} (Philippine elementary, Grades 4–6 band only)
+- Target learners: ${gradeDisplay} (Philippine elementary, Grades 4-6 band only)
 - Quarter: ${quarter}
 - Subject Matter: ${subjectMatter}
-${competencies ? `- Learning Competencies: ${competencies}` : ''}
+${competencies ? '- Learning Competencies: ' + competencies : ''}
 - Learning Objectives (every item must connect to these):
-${objectives || '(derive from subject matter and K-12 competencies for Grades 4–6)'}
+${objectives || '(derive from subject matter and K-12 competencies for Grades 4-6)'}
 
-GRADE LEVEL (CRITICAL — Grades 4–6 only):
-- Write ALL questions at the reading and thinking level of ${gradeDisplay} pupils (ages 9–12).
+GRADE LEVEL (CRITICAL):
+- Write ALL questions at the reading and thinking level of ${gradeDisplay} pupils (ages 9-12).
 - Use simple, direct wording; avoid high school or college vocabulary.
-- Content depth for this band: ${rules}
-- Do NOT include topics beyond elementary Grades 4–6 curriculum.
+- Content depth: ${rules}
 
-Assessment format (combine in ONE test document):
-- Test types to include together: ${typesLabel}
+Assessment format:
+- Test types: ${typesLabel}
 - Total items: exactly ${itemCount} (numbered 1 to ${itemCount} continuously)
 ${typeInstructions}
-- NEVER use multiple choice (no A/B/C/D, no "choose the letter", no circling options).
-- Each item must include a "format" field matching one of: ${types.map(t => `"${t}"`).join(', ')}
+- NEVER use multiple choice (no A/B/C/D options).
+- Each item must include a "format" field matching one of: ${types.map(t => '"' + t + '"').join(', ')}
+- Do NOT add a "points" field to any item.
+- The "instructions" text must tell pupils WHAT TO DO only — do NOT mention the number of items.
 
 ${langRule}
 ${!isFilipino && /bible/i.test(row.area || '') ? '- Bible subject: use age-appropriate scripture-based prompts in English (NIV).' : ''}
 
-Return this exact JSON shape:
-{"testTypes":${JSON.stringify(types)},"title":"[title]","instructions":"[directions for pupils; mention both sections if two types]","items":[{"number":1,"format":"${types[0]}","prompt":"[full question text as pupils see it]","answer":"[correct answer or expected response]","points":2}]}
+CRITICAL JSON RULES:
+- Matching Type items: "prompt" = Column A text ONLY, "columnB" = Column B text ONLY, "answer" = same as columnB. Never put both columns in "prompt".
+- Word Bank type: include a top-level "wordBank" array with answer words plus 3 distractors.
+- No "points" field anywhere. No item count in instructions.
 
-Include exactly ${itemCount} items. Points: 1–5 per item (easier items fewer points). Word Bank type must include the bank inside instructions or the first item's prompt. The "answer" field must always be filled: for True/False use "True" or "False", for Matching Type use "Column B item that matches", for Identification/Fill in the Blanks use the exact expected word/phrase, for Essay use a model answer in 1-2 sentences.`;
+Return this exact JSON shape:
+{"testTypes":${JSON.stringify(types)},"title":"[test title]","instructions":"[what to do — no item count]",${wordBankType ? '"wordBank":["word1","word2","word3"],' : ''}"items":[{"number":1,"format":"${types[0]}","prompt":"[Column A text or question]",${matchingType ? '"columnB":"[Column B match]",' : ''}"answer":"[correct answer]"}]}
+
+The "answer" field must always be filled: True/False items use "True" or "False", Matching Type uses the Column B text, Fill/Identification uses the exact word or phrase, Essay uses a 1-2 sentence model answer.`;
 }
 
 async function fetchAIPrompt(prompt, maxTokens = 4096) {
@@ -1881,6 +1890,7 @@ async function generateSummative(i) {
       testType: (result.testTypes || types).join(' + '),
       title: result.title || `Summative — ${row.area}`,
       instructions: result.instructions || '',
+      wordBank: result.wordBank || [],
       items,
       generatedAt: new Date().toISOString(),
       area: row.area,
@@ -1986,11 +1996,99 @@ function exportSummativeDOCX(i) {
   let itemsBlock = '';
   Object.keys(grouped).forEach(fmt => {
     if (!grouped[fmt].length) return;
-    itemsBlock += para(`Part: ${fmt}`, { bold: true, color: 'E65100', sz: 20 });
-    grouped[fmt].forEach(it => {
-      const pts = it.points ? ` (${it.points} pts)` : '';
-      itemsBlock += para(`${it.number}. ${it.prompt}${pts}`, { sz: 20 });
-    });
+    // Section header
+    itemsBlock += para(`Part: ${fmt}`, { bold: true, color: 'E65100', sz: 22 });
+
+    if (fmt === 'Matching Type') {
+      // --- Render as a proper two-column table ---
+      const bdrM = `<w:top w:val="single" w:sz="6" w:color="336699"/>
+                    <w:left w:val="single" w:sz="6" w:color="336699"/>
+                    <w:bottom w:val="single" w:sz="6" w:color="336699"/>
+                    <w:right w:val="single" w:sz="6" w:color="336699"/>`;
+      const headerCell = (txt) =>
+        `<w:tc><w:tcPr><w:tcW w:w="4320" w:type="dxa"/><w:tcBorders>${bdrM}</w:tcBorders>
+          <w:shd w:val="clear" w:color="336699" w:fill="336699"/></w:tcPr>
+          <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+          <w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/><w:szCs w:val="20"/>
+          <w:rFonts w:val="Arial"/></w:rPr><w:t>${x(txt)}</w:t></w:r></w:p></w:tc>`;
+      const dataCell = (txt) =>
+        `<w:tc><w:tcPr><w:tcW w:w="4320" w:type="dxa"/><w:tcBorders>${bdrM}</w:tcBorders></w:tcPr>
+          <w:p><w:pPr><w:jc w:val="left"/></w:pPr>
+          <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/><w:rFonts w:val="Arial"/></w:rPr>
+          <w:t xml:space="preserve">${x(txt)}</w:t></w:r></w:p></w:tc>`;
+      // Header row
+      let tblXml = `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>
+        <w:tblBorders>${bdrM}</w:tblBorders></w:tblPr>
+        <w:tr>${headerCell('Column A')}${headerCell('Column B')}</w:tr>`;
+      // Collect all unique Column B options (shuffled as answer choices)
+      const colBOptions = grouped[fmt].map(it => it.columnB || it.answer || '').filter(Boolean);
+      // Shuffle for display
+      const shuffled = [...colBOptions].sort(() => Math.random() - 0.5);
+      grouped[fmt].forEach((it, idx) => {
+        const colA = `${it.number}. ${it.prompt || ''}`;
+        const colB = shuffled[idx] !== undefined ? shuffled[idx] : (colBOptions[idx] || '');
+        tblXml += `<w:tr>${dataCell(colA)}${dataCell(colB)}</w:tr>`;
+      });
+      tblXml += `</w:tbl>`;
+      itemsBlock += tblXml;
+      // Answer line space
+      itemsBlock += para('Write your answer on the line before each number in Column A.', { color: '555555', sz: 18 });
+
+    } else if (fmt === 'Word Bank') {
+      // --- Render Word Bank as a shaded box table ---
+      const wbWords = (sm.wordBank && sm.wordBank.length) ? sm.wordBank : [];
+      if (wbWords.length) {
+        const bdrWB = `<w:top w:val="single" w:sz="4" w:color="2E7D32"/>
+                       <w:left w:val="single" w:sz="4" w:color="2E7D32"/>
+                       <w:bottom w:val="single" w:sz="4" w:color="2E7D32"/>
+                       <w:right w:val="single" w:sz="4" w:color="2E7D32"/>`;
+        // Header row
+        let wbTbl = `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>
+          <w:tblBorders>${bdrWB}</w:tblBorders></w:tblPr>
+          <w:tr><w:tc><w:tcPr><w:tcW w:w="8640" w:type="dxa"/><w:tcBorders>${bdrWB}</w:tcBorders>
+            <w:shd w:val="clear" w:color="2E7D32" w:fill="2E7D32"/></w:tcPr>
+            <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+            <w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/><w:szCs w:val="20"/>
+            <w:rFonts w:val="Arial"/></w:rPr><w:t>Word Bank</w:t></w:r></w:p></w:tc></w:tr>`;
+        // Words row — break into rows of 4
+        const chunkSize = 4;
+        for (let c = 0; c < wbWords.length; c += chunkSize) {
+          const chunk = wbWords.slice(c, c + chunkSize);
+          const perCell = Math.floor(8640 / chunkSize);
+          wbTbl += `<w:tr>`;
+          chunk.forEach(w => {
+            wbTbl += `<w:tc><w:tcPr><w:tcW w:w="${perCell}" w:type="dxa"/>
+              <w:tcBorders>${bdrWB}</w:tcBorders>
+              <w:shd w:val="clear" w:color="E8F5E9" w:fill="E8F5E9"/></w:tcPr>
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+              <w:r><w:rPr><w:b/><w:sz w:val="20"/><w:szCs w:val="20"/>
+              <w:rFonts w:val="Arial"/></w:rPr><w:t>${x(w)}</w:t></w:r></w:p></w:tc>`;
+          });
+          // Pad remaining cells if chunk is short
+          for (let p = chunk.length; p < chunkSize; p++) {
+            wbTbl += `<w:tc><w:tcPr><w:tcW w:w="${perCell}" w:type="dxa"/>
+              <w:tcBorders>${bdrWB}</w:tcBorders>
+              <w:shd w:val="clear" w:color="E8F5E9" w:fill="E8F5E9"/></w:tcPr>
+              <w:p><w:r><w:t></w:t></w:r></w:p></w:tc>`;
+          }
+          wbTbl += `</w:tr>`;
+        }
+        wbTbl += `</w:tbl>`;
+        itemsBlock += wbTbl;
+        itemsBlock += '<w:p/>';
+      }
+      // Render items normally
+      grouped[fmt].forEach(it => {
+        itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
+      });
+
+    } else {
+      // --- All other types: plain numbered list ---
+      grouped[fmt].forEach(it => {
+        itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
+      });
+    }
+
     itemsBlock += '<w:p/>';
   });
 
