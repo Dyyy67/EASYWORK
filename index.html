@@ -440,6 +440,16 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
           <button class="btn bo bsm" onclick="toggleNewKey()">👁</button>
           <button class="btn bp bsm" onclick="addApiKey()">+ Add Key</button>
         </div>
+        <div id="mkGeminiModelRow" style="display:none;margin-top:6px;">
+          <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:3px;">Gemini Model (Free Tier)</label>
+          <select class="fc mk-ni" id="mkGeminiModel" style="width:100%;font-weight:700;">
+            <option value="gemini-2.5-flash-lite">⚡ Flash-Lite — Fastest answers</option>
+            <option value="gemini-2.5-flash" selected>✨ Flash — All-around help (default)</option>
+            <option value="gemini-2.5-pro">🧠 Pro — Advanced math &amp; code</option>
+            <option value="gemini-2.0-flash">🟦 2.0 Flash — Stable fallback</option>
+            <option value="gemini-2.0-flash-lite">🟦 2.0 Flash-Lite — Ultra cheap</option>
+          </select>
+        </div>
         <div class="ak-help" id="mkHelp">
           <span id="mkHelpAuto">🔑 Auto-detect provider from key prefix (AIza=Gemini, sk-=OpenAI, gsk_=Groq, etc).</span>
           <span id="mkHelpGemini" style="display:none">Free Gemini key — no credit card. <a href="https://aistudio.google.com/app/apikey" target="_blank">Get one at Google AI Studio →</a></span>
@@ -1100,6 +1110,7 @@ function mkLoad(){
       const d = JSON.parse(raw);
       mkKeys   = d.keys  || [];
       mkActive = d.active|| 0;
+      mkKeys.forEach(k=>{ if(!k.geminiModel) k.geminiModel = 'gemini-2.5-flash'; });
       if(mkActive >= mkKeys.length) mkActive = 0;
     }
     // Legacy: migrate old single-key
@@ -1111,6 +1122,19 @@ function mkLoad(){
     }
   } catch(e){ mkKeys = []; mkActive = 0; }
   renderKeyList();
+}
+
+
+function getGmModel(keyOrObj){
+  let k = null;
+  if(typeof keyOrObj === 'string') k = mkKeys.find(x=>x.key===keyOrObj);
+  else if(keyOrObj && keyOrObj.key) k = keyOrObj;
+  else k = mkKeys[mkActive];
+  return (k && k.geminiModel) || 'gemini-2.5-flash';
+}
+function setKeyGeminiModel(id, model){
+  const k = mkKeys.find(x=>x.id===id);
+  if(k){ k.geminiModel = model; mkSave(); toast(`Model set to ${model} for "${k.name}"`,'ts'); }
 }
 
 function getActiveKey(){
@@ -1160,6 +1184,8 @@ function onProviderChange(){
   });
   const customRow = document.getElementById('mkCustomUrlRow');
   if(customRow) customRow.style.display = p==='custom' ? '' : 'none';
+  const gmRow = document.getElementById('mkGeminiModelRow');
+  if(gmRow) gmRow.style.display = (p==='gemini'||p==='auto') ? '' : 'none';
 }
 
 function addApiKey(){
@@ -1168,9 +1194,10 @@ function addApiKey(){
   const provider  = document.getElementById('mkProvider').value || 'auto';
   const customUrl = document.getElementById('mkCustomUrl')?.value.trim()  || '';
   const customMod = document.getElementById('mkCustomModel')?.value.trim() || '';
+  const geminiModel = document.getElementById('mkGeminiModel')?.value || 'gemini-2.5-flash';
   if(!key){ toast('Paste an API key first.','te'); return; }
   if(mkKeys.find(k=>k.key===key)){ toast('That key is already saved.','te'); return; }
-  mkKeys.push({ id: Date.now(), name, key, provider, customUrl, customMod, quotaHit: false });
+  mkKeys.push({ id: Date.now(), name, key, provider, customUrl, customMod, geminiModel, quotaHit: false });
   if(mkKeys.length === 1) mkActive = 0;
   mkSave();
   document.getElementById('mkNickname').value = '';
@@ -1279,7 +1306,7 @@ async function testKey(id){
       });
     } else {
       /* Gemini — default */
-      resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${k.key}`,{
+      resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(k)}:generateContent?key=${k.key}`,{
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({contents:[{parts:[{text:'Hi'}]}],generationConfig:{maxOutputTokens:5}})
       });
@@ -1353,6 +1380,13 @@ function renderKeyList(){
       <span class="mk-name">${esc(k.name)}</span>
       <span style="font-size:10px;color:var(--muted);font-weight:700;">${providerLabel}</span>
       <span class="mk-key-preview" title="${esc(k.key)}">${preview}</span>
+      ${_prov==='gemini'?`<select class="fc" style="font-size:11px;font-weight:700;padding:2px 4px;" onchange="setKeyGeminiModel(${k.id}, this.value)" title="Gemini model">
+        <option value="gemini-2.5-flash-lite" ${(k.geminiModel||'gemini-2.5-flash')==='gemini-2.5-flash-lite'?'selected':''}>⚡ Flash-Lite</option>
+        <option value="gemini-2.5-flash" ${(k.geminiModel||'gemini-2.5-flash')==='gemini-2.5-flash'?'selected':''}>✨ Flash</option>
+        <option value="gemini-2.5-pro" ${(k.geminiModel||'gemini-2.5-flash')==='gemini-2.5-pro'?'selected':''}>🧠 Pro</option>
+        <option value="gemini-2.0-flash" ${(k.geminiModel||'gemini-2.5-flash')==='gemini-2.0-flash'?'selected':''}>2.0 Flash</option>
+        <option value="gemini-2.0-flash-lite" ${(k.geminiModel||'gemini-2.5-flash')==='gemini-2.0-flash-lite'?'selected':''}>2.0 Flash-Lite</option>
+      </select>`:''}
       ${!isActive?`<button class="btn bo bxs" onclick="setActiveKey(${k.id})">Use</button>`:''}
       <button class="btn bo bxs" onclick="testKey(${k.id})">⚡ Test</button>
       ${k.quotaHit?`<button class="btn bo bxs" onclick="resetQuota(${k.id})">↺ Reset</button>`:''}
@@ -1928,7 +1962,7 @@ async function fetchAIPrompt(prompt, maxTokens = 4096, images = []) {
 
   } else {
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2651,7 +2685,7 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
 
   } else {
     // Gemini
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -2823,7 +2857,7 @@ Return this exact JSON structure (one subject only):
 
     } else {
       // Gemini
-      resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
+      resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({contents:[{parts:[{text:prompt}]}],
@@ -4317,7 +4351,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else {
     /* Gemini — default */
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
+      `https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{role:'user',parts:[{text:SYS+'\n\n'+prompt}]}],
@@ -5325,7 +5359,7 @@ async function prelimCallAI(prompt, apiKey){
 
   } else {
     // Gemini
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ contents:[{parts:[{text:SYS+'\n\n'+prompt}]}],
         generationConfig:{temperature:0.7,maxOutputTokens:2048,responseMimeType:'application/json'} }) });
