@@ -43,7 +43,7 @@ body{font-family:'Nunito',sans-serif;background:var(--gray);color:var(--text);mi
 @keyframes pulse{from{opacity:1;transform:scale(1)}to{opacity:.75;transform:scale(1.04)}}
 
 /* RESTORE MODAL */
-.mo-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:250;align-items:center;justify-content:center;}
+.mo-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;align-items:center;justify-content:center;}
 .mo-ov.show{display:flex;}
 .mo-box{background:#fff;border-radius:14px;padding:28px;max-width:420px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.25);}
 .mo-box h3{font-size:18px;font-weight:800;color:#1565C0;margin-bottom:8px;}
@@ -626,7 +626,7 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
       <div class="ci" style="background:#E8F5E9;color:#2E7D32;">📄</div>
       <div>
         <div class="ct">Prelim Exam Management</div>
-        <div class="cs">Upload 3–6 reference files (.docx, .doc, or .pdf), set subject &amp; grade, then generate a formatted Prelim Exam. <strong>Filipino</strong> and <strong>Arpan</strong> exams are generated in Filipino.</div>
+        <div class="cs">Upload 1–10 reference files (.docx, .doc, or .pdf), set subject &amp; grade, then generate a formatted Prelim Exam. <strong>Filipino</strong> and <strong>Arpan</strong> exams are generated in Filipino.</div>
       </div>
     </div>
 
@@ -634,7 +634,8 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;align-items:flex-end;">
       <div class="fgrp" style="min-width:160px;flex:1;">
         <label class="flbl">Subject / Learning Area</label>
-        <input class="fc" id="prelimSubject" placeholder="e.g. Bible 4, Filipino 5" oninput="debounceSave()">
+        <input class="fc" id="prelimSubject" placeholder="e.g. Bible 4, Filipino 5" oninput="debounceSave();prelimUpdateLangBadge()">
+        <div id="prelimLangBadge" style="margin-top:4px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;display:inline-block;background:#E3F2FD;color:#1565C0;">🌐 English generation</div>
       </div>
       <div class="fgrp" style="min-width:110px;flex:0 0 auto;">
         <label class="flbl">Grade Level</label>
@@ -653,30 +654,84 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
           <option value="4th">4th Quarter</option>
         </select>
       </div>
+      <div class="fgrp" style="min-width:120px;flex:0 0 auto;">
+        <label class="flbl">School Year</label>
+        <input class="fc" id="prelimSY" placeholder="e.g. 2025-2026" value="2025-2026" oninput="debounceSave()">
+      </div>
     </div>
 
     <!-- Part settings -->
     <div style="background:#F1F8E9;border:1px solid #C5E1A5;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
-      <div style="font-weight:700;font-size:12px;color:#2E7D32;margin-bottom:10px;">📋 Exam Parts &amp; Item Count</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;">
-        <div class="fgrp" style="min-width:120px;flex:1;">
-          <label class="flbl">Part I — True or False</label>
-          <input class="fc" id="prelimTF" type="number" value="20" min="0" max="80" style="text-align:center;">
+      <div style="font-weight:700;font-size:12px;color:#2E7D32;margin-bottom:10px;">📋 Exam Parts — Choose Test Type &amp; Item Count</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+
+        <div class="fgrp">
+          <label class="flbl">Part I — Test Type</label>
+          <select class="fc" id="prelimType1" onchange="debounceSave()" title="Choose the type of test for Part I">
+            <option value="tf">True or False</option>
+            <option value="mc">Multiple Choice (A-D)</option>
+            <option value="identification">Identification</option>
+            <option value="matching">Matching Type</option>
+            <option value="wb">Word Bank / Fill-in</option>
+            <option value="enumeration">Enumeration</option>
+            <option value="essay">Essay</option>
+            <option value="none">— None (Skip this part) —</option>
+          </select>
+          <input class="fc" id="prelimTF" type="number" value="20" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items">
         </div>
-        <div class="fgrp" style="min-width:120px;flex:1;">
-          <label class="flbl">Part II — Word Bank / Fill</label>
-          <input class="fc" id="prelimWB" type="number" value="10" min="0" max="80" style="text-align:center;">
+
+        <div class="fgrp">
+          <label class="flbl">Part II — Test Type</label>
+          <select class="fc" id="prelimType2" onchange="debounceSave()" title="Choose the type of test for Part II">
+            <option value="wb">Word Bank / Fill-in</option>
+            <option value="tf">True or False</option>
+            <option value="mc">Multiple Choice (A-D)</option>
+            <option value="identification">Identification</option>
+            <option value="matching">Matching Type</option>
+            <option value="enumeration">Enumeration</option>
+            <option value="essay">Essay</option>
+            <option value="none">— None (Skip this part) —</option>
+          </select>
+          <input class="fc" id="prelimWB" type="number" value="10" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items">
         </div>
-        <div class="fgrp" style="min-width:120px;flex:1;">
-          <label class="flbl">Part III — Essay (items)</label>
-          <input class="fc" id="prelimEssay" type="number" value="2" min="0" max="80" style="text-align:center;">
+
+        <div class="fgrp">
+          <label class="flbl">Part III — Test Type</label>
+          <select class="fc" id="prelimType3" onchange="debounceSave()" title="Choose the type of test for Part III">
+            <option value="essay">Essay</option>
+            <option value="tf">True or False</option>
+            <option value="mc">Multiple Choice (A-D)</option>
+            <option value="identification">Identification</option>
+            <option value="matching">Matching Type</option>
+            <option value="wb">Word Bank / Fill-in</option>
+            <option value="enumeration">Enumeration</option>
+            <option value="none">— None (Skip this part) —</option>
+          </select>
+          <input class="fc" id="prelimEssay" type="number" value="2" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items">
         </div>
+
+        <div class="fgrp">
+          <label class="flbl">Part IV — Test Type</label>
+          <select class="fc" id="prelimType4" onchange="debounceSave()" title="Choose the type of test for Part IV">
+            <option value="none">— None (Skip this part) —</option>
+            <option value="mc">Multiple Choice (A-D)</option>
+            <option value="tf">True or False</option>
+            <option value="identification">Identification</option>
+            <option value="matching">Matching Type</option>
+            <option value="wb">Word Bank / Fill-in</option>
+            <option value="enumeration">Enumeration</option>
+            <option value="essay">Essay</option>
+          </select>
+          <input class="fc" id="prelimMC" type="number" value="0" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items (0 = skip)" title="Set to 0 or choose None to skip Part IV.">
+        </div>
+
       </div>
+      <div style="font-size:11px;color:#558B2F;margin-top:8px;font-style:italic;">⚙️ Each part is independent — pick any test type or choose <strong>None</strong> to skip that part entirely. Part IV with Multiple Choice gets the audit panel.</div>
     </div>
 
     <!-- File upload area -->
     <div style="margin-bottom:14px;">
-      <label class="flbl">Reference Files (3–6 .docx / .doc / .pdf)</label>
+      <label class="flbl">Reference Files (1–10 .docx / .doc / .pdf)</label>
       <div id="prelimDropZone" style="border:2px dashed #A5D6A7;border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:#F9FBE7;transition:background .2s;"
         onclick="document.getElementById('prelimFileInput').click()"
         ondragover="event.preventDefault();this.style.background='#DCEDC8';"
@@ -684,7 +739,7 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
         ondrop="prelimHandleDrop(event)">
         <div style="font-size:28px;margin-bottom:6px;">📁</div>
         <div style="font-size:13px;color:#558B2F;font-weight:600;">Click or drag &amp; drop files here</div>
-        <div style="font-size:11px;color:#888;margin-top:4px;">3 to 6 files • .docx, .doc, or .pdf</div>
+        <div style="font-size:11px;color:#888;margin-top:4px;">1 to 10 files • .docx, .doc, or .pdf</div>
       </div>
       <input type="file" id="prelimFileInput" accept=".docx,.doc,.pdf" multiple style="display:none" onchange="prelimHandleFiles(this.files)">
     </div>
@@ -1411,15 +1466,9 @@ let saveTimer = null;
 ════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   mkLoad();
-  const saved = localStorage.getItem(SAVE_KEY);
-  if (saved) {
-    document.getElementById('restoreMo').classList.add('show');
-  } else {
-    initRows();
-    renderSubs();
-    renderTable();
-    renderSummativesTable();
-  }
+  /* App state (initRows, renderSubs, renderTable, renderSummativesTable) is initialized
+     ONLY via appReinitWithData() after successful Firebase auth.
+     Do NOT call them here — the auth overlay is always shown first. */
   window.addEventListener('beforeunload', autoSave);
 });
 
@@ -4251,7 +4300,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'deepseek'){
     const r = await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'deepseek-chat', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'deepseek-chat', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -4984,6 +5033,31 @@ async function prelimExtractDOCX(file){
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
+        const buf = e.target.result;
+
+        /* Strip XML tags helper */
+        function stripWordXml(xmlStr){
+          return xmlStr
+            .replace(/<w:br[^>]*\/?>/g, '\n')
+            .replace(/<\/w:p>/g, '\n')
+            .replace(/<w:p[ >][^>]*>/g, '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+            .replace(/&apos;/g,"'").replace(/&quot;/g,'"')
+            .replace(/[ \t]+/g,' ')
+            .replace(/\n{3,}/g,'\n\n')
+            .trim();
+        }
+
+        /* Check if this is a WordML XML .doc (old Word 2003 XML format) */
+        const first512 = new TextDecoder('utf-8',{fatal:false}).decode(new Uint8Array(buf,0,512));
+        if(/^\s*<\?xml|<w:wordDocument/i.test(first512)){
+          const fullXml = new TextDecoder('utf-8',{fatal:false}).decode(new Uint8Array(buf));
+          resolve(stripWordXml(fullXml));
+          return;
+        }
+
+        /* Try as .docx ZIP */
         if(typeof JSZip === 'undefined'){
           await new Promise((res, rej) => {
             const s = document.createElement('script');
@@ -4992,23 +5066,17 @@ async function prelimExtractDOCX(file){
             document.head.appendChild(s);
           });
         }
-        const zip = await JSZip.loadAsync(e.target.result);
-        const xmlFile = zip.file('word/document.xml');
-        if(!xmlFile){
-          // Might be a legacy binary .doc — try reading as plain text fallback
-          resolve('(Legacy .doc format — content may be limited: ' + file.name + ')');
+        let zip = null;
+        try { zip = await JSZip.loadAsync(buf); } catch(_){ zip = null; }
+        const xmlFile = zip && zip.file('word/document.xml');
+        if(xmlFile){
+          const xmlText = await xmlFile.async('text');
+          resolve(stripWordXml(xmlText));
           return;
         }
-        const xmlText = await xmlFile.async('text');
-        let text = xmlText
-          .replace(/<w:br[^>]*\/>/g, '\n')
-          .replace(/<w:p[ >][^>]*>/g, '\n')
-          .replace(/<[^>]+>/g, '')
-          .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
-          .replace(/&apos;/g,"'").replace(/&quot;/g,'"')
-          .replace(/[ \t]+/g,' ')
-          .replace(/\n{3,}/g,'\n\n')
-          .trim();
+
+        /* Legacy binary OLE .doc fallback */
+        const text = prelimExtractLegacyDoc(buf);
         resolve(text);
       } catch(err){
         resolve('(Could not read ' + file.name + ': ' + err.message + ')');
@@ -5016,6 +5084,109 @@ async function prelimExtractDOCX(file){
     };
     reader.readAsArrayBuffer(file);
   });
+}
+
+/* Legacy binary .doc extractor — pulls readable ASCII and UTF-16LE runs from the OLE stream.
+   Not perfect, but recovers the bulk of the Filipino/English text so the AI has real content. */
+function prelimExtractLegacyDoc(buffer){
+  const bytes = new Uint8Array(buffer);
+  const out = [];
+
+  // 1) ASCII runs (printable + common whitespace), min length 4
+  let run = '';
+  for(let i=0;i<bytes.length;i++){
+    const b = bytes[i];
+    const printable = (b>=32 && b<=126) || b===9 || b===10 || b===13;
+    if(printable){ run += String.fromCharCode(b); }
+    else {
+      if(run.length >= 4) out.push(run);
+      run = '';
+    }
+  }
+  if(run.length >= 4) out.push(run);
+
+  // 2) UTF-16LE runs (Word often stores text this way)
+  let u16 = '';
+  for(let i=0;i+1<bytes.length;i+=2){
+    const lo = bytes[i], hi = bytes[i+1];
+    if(hi === 0 && ((lo>=32 && lo<=126) || lo===9 || lo===10 || lo===13)){
+      u16 += String.fromCharCode(lo);
+    } else if(hi < 0x04 && lo !== 0){
+      // Latin-1 supplement / Filipino accents region
+      u16 += String.fromCharCode((hi<<8)|lo);
+    } else {
+      if(u16.length >= 4) out.push(u16);
+      u16 = '';
+    }
+  }
+  if(u16.length >= 4) out.push(u16);
+
+  // Clean + dedupe noisy fragments (drops obvious OLE/binary garbage tokens)
+  const cleaned = out
+    .map(s => s.replace(/[ \t]+/g,' ').trim())
+    .filter(s => s.length >= 4)
+    .filter(s => /[A-Za-zÀ-ÿ]/.test(s))                  // must contain a letter
+    .filter(s => !/^[A-Z0-9_]{1,30}$/.test(s))           // skip ALLCAPS tokens (stream names)
+    .filter(s => !/^(Microsoft|Word\.Document|MSWordDoc|Root Entry|WordDocument|CompObj|SummaryInformation|DocumentSummaryInformation|ObjectPool|1Table|0Table|Data)/i.test(s));
+
+  return cleaned.join('\n')
+    .replace(/\n{3,}/g,'\n\n')
+    .replace(/[ \t]+/g,' ')
+    .trim();
+}
+
+
+function prelimCleanText(raw) {
+  const lines = raw.split('\n');
+  const result = [];
+  /* Only skip lines that are CLEARLY paper metadata (header/footer/blank fields),
+     NOT lesson content. Keep everything that looks like actual lesson material. */
+  const isMetaOnly = (t) => {
+    if(!t || t.length === 0) return true;
+    /* Pure blank/underline filler */
+    if(/^[_\s\-=]{4,}$/.test(t)) return true;
+    /* School header lines (short and contain school identifiers) */
+    if(t.length < 70 && /upper\s*klinan|klinan\s*sda|adventist\s*school/i.test(t)) return true;
+    if(t.length < 50 && /^school\s*(id|year)\s*[:\d]/i.test(t)) return true;
+    if(t.length < 40 && /^(s\.?y\.?|sy)\s*20\d{2}/i.test(t)) return true;
+    /* Blank student fields */
+    if(/^(name|nombre|petsa|date|score|section|grade\s*[&]\s*section)\s*[:\-]?\s*_{0,30}\s*$/i.test(t)) return true;
+    /* Address lines */
+    if(t.length < 60 && /^purok\s+\w/i.test(t)) return true;
+    if(t.length < 50 && /^(south\s*cotabato|polomolok)\b/i.test(t)) return true;
+    return false;
+  };
+  for(const line of lines){
+    const t = line.trim();
+    if(!isMetaOnly(t)) result.push(t);
+  }
+  return result.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function prelimSanitizeResult(parsed) {
+  if (!parsed) return parsed;
+  const metaRx = [
+    /upper\s*klinan/i, /klinan\s*sda/i, /adventist/i,
+    /school\s*(id|inc)/i, /409417/,
+    /prepared\s*by/i, /checked\s*by/i,
+    /polomolok/i, /south\s*cotabato/i, /purok/i,
+    /summative\s*(test|assessment)/i,
+    /guro\s*(na\s*)?(gumawa|ng\s*pagsusulit)/i,
+    /pangalan\s*ng\s*paaralan/i,
+    /pagsusulit\s*ay\s*para\s*sa\s*(sy|school)/i,
+  ];
+  const cleanItems = (items) => (items || []).filter(it => {
+    const q = String(it.q || it.question || '');
+    return !metaRx.some(rx => rx.test(q));
+  });
+  if (parsed.part1) parsed.part1.items = cleanItems(parsed.part1.items);
+  if (parsed.part2) {
+    parsed.part2.items = cleanItems(parsed.part2.items);
+    // wordBank rebuilt from item answers after ensureCount — preserved as-is here for distractor reuse
+  }
+  if (parsed.part3) parsed.part3.items = cleanItems(parsed.part3.items);
+  if (parsed.part4) parsed.part4.items = cleanItems(parsed.part4.items);
+  return parsed;
 }
 
 async function prelimExtractPDF(file){
@@ -5055,18 +5226,42 @@ async function prelimExtractPDF(file){
   });
 }
 
+function prelimUpdateLangBadge(){
+  const subject = (document.getElementById('prelimSubject')?.value || '').trim();
+  const badge = document.getElementById('prelimLangBadge');
+  if(!badge) return;
+  const isFil = /\bfilipino\s*[456]\b/i.test(subject) || /\barpan\b/i.test(subject);
+  if(isFil){
+    badge.textContent = '🇵🇭 Filipino/Tagalog generation';
+    badge.style.background = '#FFF8E1';
+    badge.style.color = '#E65100';
+  } else {
+    badge.textContent = '🌐 English generation';
+    badge.style.background = '#E3F2FD';
+    badge.style.color = '#1565C0';
+  }
+}
+
 function prelimRenderFileList(){
   const list = document.getElementById('prelimFileList');
   const items = document.getElementById('prelimFileItems');
   if(!prelimFiles.length){ list.style.display='none'; return; }
   list.style.display='block';
-  items.innerHTML = prelimFiles.map((f,i) => `
+  items.innerHTML = prelimFiles.map((f,i) => {
+    const chars = (f.text||'').replace(/\s+/g,'').length;
+    const status = chars < 100
+      ? `<span style="color:#C62828;font-size:10px;">⚠️ Could not read — try .docx or PDF</span>`
+      : `<span style="color:#388E3C;font-size:10px;">✅ ${chars.toLocaleString()} chars extracted</span>`;
+    return `
     <div style="display:flex;align-items:center;gap:8px;background:#F1F8E9;border-radius:6px;padding:7px 10px;">
       <span style="font-size:14px;">📄</span>
-      <span style="flex:1;font-size:12px;font-weight:600;color:#33691E;">${esc(f.name)}</span>
-      <span style="font-size:10px;color:#888;">${f.text.length} chars</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;color:#33691E;">${esc(f.name)}</div>
+        ${status}
+      </div>
       <button onclick="prelimRemoveFile(${i})" style="background:none;border:none;cursor:pointer;color:#C62828;font-size:14px;padding:0 4px;" title="Remove">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function prelimRemoveFile(i){
@@ -5106,24 +5301,141 @@ function feBuildRefContext(){
 }
 
 /* ── Main generation ── */
+
+/* Robust JSON parser for prelim AI responses — handles unterminated strings, smart quotes, trailing commas */
+function prelimParseJson(raw){
+  let js = String(raw||'').replace(/```json|```/gi,'').trim();
+  const s = js.indexOf('{'), e = js.lastIndexOf('}');
+  if(s!==-1 && e!==-1 && e>s) js = js.slice(s, e+1);
+  if(!js) throw new Error('AI returned empty content. Please try again.');
+  // First pass
+  try { return JSON.parse(js); } catch(_){}
+  // Repairs
+  let fixed = js
+    .replace(/[\u201C\u201D]/g,'"')
+    .replace(/[\u2018\u2019]/g,"'")
+    .replace(/,\s*([}\]])/g,'$1')
+    .replace(/}\s*{/g,'},{');
+  try { return JSON.parse(fixed); } catch(_){}
+  // Escape raw newlines/tabs inside string literals
+  let out = '', inStr = false, esc = false;
+  for(let i=0;i<fixed.length;i++){
+    const ch = fixed[i];
+    if(inStr){
+      if(esc){ out += ch; esc = false; continue; }
+      if(ch === '\\'){ out += ch; esc = true; continue; }
+      if(ch === '"'){ out += ch; inStr = false; continue; }
+      if(ch === '\n'){ out += '\\n'; continue; }
+      if(ch === '\r'){ out += '\\r'; continue; }
+      if(ch === '\t'){ out += '\\t'; continue; }
+      out += ch;
+    } else {
+      out += ch;
+      if(ch === '"') inStr = true;
+    }
+  }
+  try { return JSON.parse(out); } catch(_){}
+  // Last resort: truncate trailing junk and close braces
+  let repaired = out;
+  // Close unterminated string
+  if(inStr) repaired += '"';
+  // Balance braces/brackets
+  const openB = (repaired.match(/\{/g)||[]).length;
+  const closeB = (repaired.match(/\}/g)||[]).length;
+  const openA = (repaired.match(/\[/g)||[]).length;
+  const closeA = (repaired.match(/\]/g)||[]).length;
+  // Trim trailing comma
+  repaired = repaired.replace(/,\s*$/,'');
+  for(let i=0;i<openA-closeA;i++) repaired += ']';
+  for(let i=0;i<openB-closeB;i++) repaired += '}';
+  return JSON.parse(repaired);
+}
+
 async function prelimGenerate(){
   const apiKey = getActiveKey();
   if(!apiKey){ toast('⚠️ No API key. Add one in the API Key Manager.','te'); return; }
-  if(prelimFiles.length < 3){ toast('Please upload at least 3 reference files (.docx, .doc, or .pdf).','te'); return; }
+  if(prelimFiles.length < 1){ toast('Please upload at least 1 reference file (.docx, .doc, or .pdf).','te'); return; }
+  if(prelimFiles.length > 10){ toast('Maximum 10 reference files allowed.','te'); return; }
 
   const subject = document.getElementById('prelimSubject').value.trim() || 'the subject';
   const grade   = document.getElementById('prelimGrade').value;
   const quarter = document.getElementById('prelimQuarter').value;
-  const tfCount = parseInt(document.getElementById('prelimTF').value) || 20;
-  const wbCount = parseInt(document.getElementById('prelimWB').value) || 10;
+  const tfCount    = parseInt(document.getElementById('prelimTF').value)    || 20;
+  const wbCount    = parseInt(document.getElementById('prelimWB').value)    || 10;
   const essayCount = parseInt(document.getElementById('prelimEssay').value) || 2;
 
-  const isFil = /\bfilipino\b/i.test(subject) || /\barpan\b/i.test(subject);
+  /* Read test type dropdowns */
+  const type1 = (document.getElementById('prelimType1')?.value || 'tf');
+  const type2 = (document.getElementById('prelimType2')?.value || 'wb');
+  const type3 = (document.getElementById('prelimType3')?.value || 'essay');
 
-  // Build combined context from uploaded files
-  const combinedContext = prelimFiles.map((f,i) =>
-    `=== FILE ${i+1}: ${f.name} ===\n${f.text.slice(0,3000)}`
-  ).join('\n\n');
+  /* Build only active parts — skip any set to 'none' */
+  const activeParts = [];
+  if(type1 !== 'none' && tfCount    > 0) activeParts.push({ key:'part1', type:type1, count:tfCount,    partNum:1 });
+  if(type2 !== 'none' && wbCount    > 0) activeParts.push({ key:'part2', type:type2, count:wbCount,    partNum:2 });
+  if(type3 !== 'none' && essayCount > 0) activeParts.push({ key:'part3', type:type3, count:essayCount, partNum:3 });
+
+  if(activeParts.length === 0){
+    toast('⚠️ Please enable at least one exam part (not all set to None or 0).','te');
+    return;
+  }
+
+  /* Human-readable labels for AI prompt and preview */
+  function typeLabel(t, isFil){
+    const map = {
+      tf:            isFil ? 'Tama o Mali'            : 'True or False',
+      mc:            isFil ? 'Multiple Choice (A-D)'  : 'Multiple Choice (A-D)',
+      identification:isFil ? 'Pagkilala (Identification)' : 'Identification',
+      matching:      isFil ? 'Pagtatambal (Matching)' : 'Matching Type',
+      wb:            isFil ? 'Word Bank / Punan ang Patlang' : 'Word Bank / Fill-in-the-Blank',
+      enumeration:   isFil ? 'Enumeration'            : 'Enumeration',
+      essay:         isFil ? 'Sanaysay (Essay)'       : 'Essay',
+    };
+    return map[t] || t;
+  }
+
+  /* JSON format instruction per type (for AI) */
+  function typeInstruction(t, count, partNum, isFil){
+    const p = `Part ${['I','II','III'][partNum-1]}`;
+    const en = {
+      tf:            `${p}: exactly ${count} True/False questions. Each item: {"q":"...","answer":true or false}. Vary T/F answers (not all true or all false).`,
+      mc:            `${p}: exactly ${count} Multiple Choice questions with 4 options each. Each item: {"q":"...","options":["A text","B text","C text","D text"],"answer":"exact correct option text"}. No lazy distractors (All of the above, None of the above, etc).`,
+      identification:`${p}: exactly ${count} Identification items — fill-in-the-blank with a single word/phrase answer. Each item: {"q":"___________ is the term for...","answer":"CorrectTerm"}`,
+      matching:      `${p}: exactly ${count} Matching Type pairs. Column A = term/question, Column B = answer/definition. Each item: {"q":"Column A term or question","columnB":"Column B answer","answer":"Column B answer"}.`,
+      wb:            `${p}: exactly ${count} Fill-in-the-Blank sentences. Include a "wordBank" array with the correct answers PLUS 2-3 distractor words. Each item: {"q":"The ________ ...","answer":"word"}. wordBank field goes at part level.`,
+      enumeration:   `${p}: exactly ${count} Enumeration items — each asks pupils to list things. Each item: {"q":"Name 3 examples of...","answer":"item1, item2, item3"}`,
+      essay:         `${p}: exactly ${count} Essay questions (short answer, 1-3 sentences). Each item: {"q":"Why is...?","answer":"Model answer..."}`,
+    };
+    const fil = {
+      tf:            `${p}: eksaktong ${count} na tanong na Tama o Mali. Bawat aytem: {"q":"...","answer":true o false}. Magpalit-palit ang T at F (huwag lahat ay tama o lahat ay mali).`,
+      mc:            `${p}: eksaktong ${count} Multiple Choice na may 4 pagpipilian. Bawat aytem: {"q":"...","options":["A text","B text","C text","D text"],"answer":"eksaktong tamang opsyon"}. Iwasan ang mga lazy distractor.`,
+      identification:`${p}: eksaktong ${count} na Identification. Patlang na may isang salita/parirala ang sagot. Bawat aytem: {"q":"Si ___________ ay...","answer":"TamangSalita"}`,
+      matching:      `${p}: eksaktong ${count} na Matching Type. Hanay A = termino/tanong, Hanay B = sagot/kahulugan. Bawat aytem: {"q":"Hanay A na tanong","columnB":"Hanay B na sagot","answer":"Hanay B na sagot"}.`,
+      wb:            `${p}: eksaktong ${count} na Fill-in-the-Blank na pangungusap. Maglakip ng "wordBank" array na may tamang mga sagot KASAMA ang 2-3 panlitong salita. Bawat aytem: {"q":"Ang __________ ay...","answer":"salita"}.`,
+      enumeration:   `${p}: eksaktong ${count} na Enumeration. Ang bawat tanong ay nagtatanong na mag-lista ng mga bagay. Bawat aytem: {"q":"Mag-bigay ng 3 halimbawa ng...","answer":"bagay1, bagay2, bagay3"}`,
+      essay:         `${p}: eksaktong ${count} na Essay na tanong (maikling sagot, 1-3 pangungusap). Bawat aytem: {"q":"Bakit mahalaga...?","answer":"Huwaran ng sagot..."}`,
+    };
+    return isFil ? fil[t] : en[t];
+  }
+
+  /* Filipino/Tagalog generation ONLY for: Filipino 4, Filipino 5, Filipino 6, ARPAN */
+  const isFil = /\bfilipino\s*[456]\b/i.test(subject) || /\barpan\b/i.test(subject);
+
+  // Build combined context from uploaded files — preserve ALL lesson content
+  const combinedContext = prelimFiles.map((f,i) => {
+    const cleaned = prelimCleanText(f.text || '').slice(0, 14000);
+    return `=== REFERENCE FILE ${i+1} of ${prelimFiles.length}: "${f.name}" ===\n${cleaned}\n=== END FILE ${i+1} ===`;
+  }).join('\n\n');
+
+  // Guard: if extracted text is too short, warn the teacher
+  const totalChars = prelimFiles.reduce((n,f)=>n + (f.text||'').length, 0);
+  const shortFiles = prelimFiles.filter(f => (f.text||'').replace(/\s+/g,'').length < 100);
+  if(shortFiles.length === prelimFiles.length){
+    const names = shortFiles.map(f=>f.name).join(', ');
+    toast(`⚠️ Could not read text from: ${names}. Try re-saving as .docx or PDF and upload again. (Extracted: ${totalChars} chars)`, 'te');
+    return;
+  }
+
 
   const genBtn = document.getElementById('prelimGenBtn');
   const gp = document.getElementById('prelimGP');
@@ -5140,163 +5452,218 @@ async function prelimGenerate(){
   prelimResult = null;
 
   const lang = isFil ? 'FILIPINO (Tagalog)' : 'ENGLISH';
+  // Grade-level cognitive guidance (Grades 4-6 elementary)
+  const gradeNum = (grade.match(/\d+/) || ['5'])[0];
+  const cogNoteEn = `COGNITIVE LEVEL: Write at a ${grade} reading and thinking level (ages ${+gradeNum+5}-${+gradeNum+6}). Use short, clear sentences, concrete vocabulary, and questions a ${grade} pupil can understand and answer. Avoid abstract or college-level wording.`;
+  const cogNoteFil = `ANTAS NG PAG-IISIP: Isulat sa antas ng pagbasa at pag-unawa ng ${grade} (edad ${+gradeNum+5}-${+gradeNum+6}). Gumamit ng maikli at malinaw na pangungusap, simpleng salitang Filipino na pamilyar sa mga bata, at mga tanong na kayang sagutin ng isang mag-aaral sa ${grade}. Iwasan ang malalim o pang-matatandang salita.`;
+  const sourceRuleEn = `STRICT SOURCE FIDELITY (HIGHEST PRIORITY):
+- Base every question and answer ONLY on LESSON CONTENT — concepts, rules, vocabulary taught in the subject.
+- FORBIDDEN as question topics: school name, school ID, address, teacher name, who prepared the exam, SY, quarter label, exam type name, student name/score/date/section fields, book title, page numbers. These are PAPER METADATA — not lesson content.
+- WORD BANK: content vocabulary only (nouns, verbs, adjectives from the lesson). NEVER: numbers, years, INC, SY, ordinals like 1st, booleans like True/False, bare acronyms.
+- The story/topic name must be the LESSON TITLE — not the school name.
+- Think like a real teacher: test what students LEARNED, not what is printed on the exam paper.`;
+  const sourceRuleFil = `MAHIGPIT NA BATAYAN SA SANGGUNIAN (PINAKAMAHALAGA):
+- Ibatay ang BAWAT tanong at sagot sa NILALAMAN NG ARALIN — konsepto, bokabularyo, at ideyang itinuro sa paksa.
+- IPINAGBABAWAL bilang tanong: pangalan ng paaralan, school ID, address, pangalan ng guro, SY, quarter label, uri ng pagsusulit, patlang para sa marka/petsa/seksyon, pamagat ng aklat, numero ng pahina. Ito ay impormasyon sa papel — HINDI aralin.
+- WORD BANK: bokabularyo ng aralin lamang. HINDI pinapayagan: numero, taon, INC, SY, 1st/2nd/3rd/4th, Tama, Mali, mga acronym.
+- Ang story/paksa ay PAMAGAT NG ARALIN — hindi pangalan ng paaralan.
+- Subukin ang kaalaman sa ARALIN — hindi ang nakasulat sa papel ng pagsusulit.`;
   const langNote = isFil
-    ? 'MAHALAGA: Isulat ang LAHAT ng tanong, salita, at sagot SA FILIPINO/TAGALOG. Angkop sa antas ng Grades 4-6.'
-    : 'Write all questions and content in ENGLISH appropriate for Grades 4-6.';
+    ? `${sourceRuleFil}
 
-  gstat.textContent = 'Generating Part I — True or False…';
-  gfill.style.width = '20%';
+MAHALAGANG TUNTUNIN SA WIKA (HUWAG LABAGIN):
+- Isulat ang BAWAT BAHAGI ng pagsusulit SA PURONG FILIPINO/TAGALOG LAMANG: ang pamagat, mga panuto, mga label ng bahagi (Bahagi I, Bahagi II, Bahagi III), word bank, mga tanong, at mga sagot.
+- BAWAL ang Ingles sa "q", "answer", "story", at "wordBank" — kahit isang salita. Tanging mga tamang pangalan (hal. Juan, Maria, Mindanao) ang pwedeng manatili.
+- Kung ang sangguniang dokumento ay nasa Ingles, ISALIN mo muna ang ideya sa Filipino bago ka gumawa ng tanong (ngunit dapat nasa dokumento pa rin ang ideya).
+- Gumamit ng wastong baybay at gramatika sa Filipino.
+${cogNoteFil}`
+    : `${sourceRuleEn}
 
-  // PART I — True or False
-  const prompt1 = isFil ? `
+Write all questions and content in ENGLISH appropriate for ${grade} pupils.
+${cogNoteEn}`;
+
+  gstat.textContent = 'Generating all parts in one request…';
+  gfill.style.width = '25%';
+
+  // ── Build dynamic JSON schema based on selected types ──
+  function partJsonSchema(t, partKey){
+    if(t==='wb')      return `"${partKey}": {"story":"...","wordBank":["word1","word2"],"items":[{"q":"The __________ ...","answer":"word"}]}`;
+    if(t==='mc')      return `"${partKey}": {"story":"...","items":[{"q":"...","options":["A text","B text","C text","D text"],"answer":"A text"}]}`;
+    if(t==='matching')return `"${partKey}": {"story":"...","items":[{"q":"Column A","columnB":"Column B","answer":"Column B"}]}`;
+    return `"${partKey}": {"story":"...","items":[{"q":"...","answer":"..."}]}`;
+  }
+
+  // Build prompt rules and schema only for active parts
+  const partLabels = ['I','II','III'];
+  const activeRules = activeParts.map(p => `- ${typeInstruction(p.type, p.count, p.partNum, isFil)}`).join('\n');
+  const activeSchema = activeParts.map(p => `  ${partJsonSchema(p.type, p.key)}`).join(',\n');
+
+  // SINGLE COMBINED PROMPT — only active parts included
+  const combinedPrompt = isFil ? `
 Ikaw ay isang guro na gumagawa ng Prelim Exam para sa ${grade} ${subject} (${quarter} Quarter).
-Batay sa mga sumusunod na sangguniang dokumento, gumawa ng eksaktong ${tfCount} True or False na tanong.
 
-KONTEKSTO MULA SA MGA DOKUMENTO:
+⚠️ PINAKAMAHALAGANG TUNTUNIN: Gamitin LAMANG ang EKSAKTONG nilalaman ng mga dokumentong ibinigay sa ibaba. Huwag mag-imbento ng mga tanong mula sa iyong sariling kaalaman. LAHAT ng tanong, sagot, at word bank ay dapat hango sa mga tekstong ito.
+
+NILALAMAN NG MGA SANGGUNIANG DOKUMENTO:
 ${combinedContext}
 
 ${langNote}
 
 Mga Panuntunan:
-- Gumawa ng eksaktong ${tfCount} tanong na True o False
-- Ibatay ang lahat ng tanong sa nilalaman ng mga dokumento
-- Isama ang pangalan ng kwento/paksa bilang "story" field (halimbawa: "Ang Bahay sa Bato")
-- Ang mga tanong ay dapat angkop sa ${grade} na mag-aaral
+${activeRules}
+- BAWAT tanong ay dapat direktang base sa tekstong nasa mga dokumento
+- Angkop sa ${grade} na mag-aaral
 - Sagutin LAMANG ng valid JSON. Walang markdown, walang backticks.
+- MAHALAGA: Ang bawat bahagi ay may SARILING uri ng tanong — huwag pagsamahin o palitan ang mga ito.
 
 {
-  "story": "Pangalan ng Kwento o Paksa",
-  "items": [
-    {"q": "Ang tanong dito.", "answer": true},
-    {"q": "Isa pang tanong.", "answer": false}
-  ]
+${activeSchema}
 }` : `
 You are a teacher creating a Prelim Exam for ${grade} ${subject} (${quarter} Quarter).
-Based on the reference documents below, create exactly ${tfCount} True or False questions.
 
-CONTEXT FROM UPLOADED DOCUMENTS:
+⚠️ MOST IMPORTANT RULE: You must use ONLY the content from the reference documents provided below. Do NOT invent questions from your own knowledge. ALL questions, answers, and word bank words must come directly from the text in these files.
+
+REFERENCE DOCUMENT CONTENT:
 ${combinedContext}
 
 ${langNote}
 
 Rules:
-- Create exactly ${tfCount} True/False questions
-- Base all questions on content from the documents
-- Include the story/topic name as the "story" field
-- Questions must be appropriate for ${grade} students
+${activeRules}
+- EVERY question must be directly based on the document content above — copy concepts, vocabulary, and facts from it
+- Do NOT generate generic Bible/subject questions that are not found in the documents
+- Use simple, clear language appropriate for ${grade} students (kids-friendly vocabulary)
 - Respond ONLY with valid JSON. No markdown, no backticks.
+- CRITICAL: Each part must use EXACTLY the test type specified above — do NOT mix types between parts.
 
 {
-  "story": "Story or Topic Name",
-  "items": [
-    {"q": "The question here.", "answer": true},
-    {"q": "Another question.", "answer": false}
-  ]
+${activeSchema}
 }`;
 
-  let part1, part2, part3;
+  let part1 = null, part2 = null, part3 = null;
+
+  /* Top-up helper: type-aware, uses the actual selected type for this part */
+  async function prelimEnsureCount(part, wanted, actualType){
+    if(wanted <= 0 || actualType === 'none') return null;
+    if(!part || !Array.isArray(part.items)) part = { ...(part||{}), items: [] };
+    let tries = 0;
+    while(part.items.length < wanted && tries < 2){
+      tries++;
+      const missing = wanted - part.items.length;
+      const ctx = combinedContext;
+      const topUp = isFil
+        ? `Batay sa mga sangguniang dokumento, gumawa ng eksaktong ${missing} KARAGDAGANG ${typeLabel(actualType, true)} na tanong na HINDI pa nababanggit. Iwasan ang pag-uulit.\n\nKONTEKSTO:\n${ctx}\n\nSagutin LAMANG ng valid JSON:\n${partJsonSchema(actualType,'result')}`
+        : `Based on the reference documents, create exactly ${missing} ADDITIONAL ${typeLabel(actualType, false)} items not already covered. Avoid repetition.\n\nCONTEXT:\n${ctx}\n\nRespond ONLY with valid JSON:\n${partJsonSchema(actualType,'result')}`;
+      try{
+        const raw = await prelimCallAI(topUp, apiKey);
+        const extra = prelimParseJson(raw);
+        const extraItems = extra?.result?.items || extra?.items || [];
+        if(Array.isArray(extraItems)) part.items = part.items.concat(extraItems);
+        if(actualType==='wb' && extra){
+          const extraWb = extra?.result?.wordBank || extra?.wordBank || [];
+          if(Array.isArray(extraWb)) part.wordBank = (part.wordBank||[]).concat(extraWb);
+        }
+      }catch(_){ /* swallow */ }
+    }
+    /* Pad with placeholders if still short */
+    while(part.items.length < wanted){
+      const n = part.items.length + 1;
+      if(actualType==='tf')          part.items.push({ q:(isFil?'(Karagdagang tanong ':'(Additional question ')+n+')', answer:true });
+      else if(actualType==='wb')     part.items.push({ q:(isFil?'Pangungusap ':'Sentence ')+n+': __________.', answer:'' });
+      else if(actualType==='mc')     part.items.push({ q:(isFil?'Tanong ':'Question ')+n+'?', options:['A','B','C','D'], answer:'A' });
+      else if(actualType==='matching')part.items.push({ q:(isFil?'Termino ':'Term ')+n, columnB:(isFil?'Kahulugan ':'Definition ')+n, answer:(isFil?'Kahulugan ':'Definition ')+n });
+      else                           part.items.push({ q:(isFil?'Tanong ':'Question ')+n+'.' });
+    }
+    if(part.items.length > wanted) part.items = part.items.slice(0, wanted);
+    return part;
+  }
 
   try {
-    gstat.textContent = 'Generating Part I — True or False…';
-    gfill.style.width = '25%';
-    const raw1 = await prelimCallAI(prompt1, apiKey);
-    part1 = JSON.parse(raw1.replace(/```json|```/g,'').trim());
+    const rawAll = await prelimCallAI(combinedPrompt, apiKey);
+    gfill.style.width = '75%';
+    gstat.textContent = 'Parsing response…';
+    let all = prelimParseJson(rawAll) || {};
+    all = prelimSanitizeResult(all);
 
-    gstat.textContent = 'Generating Part II — Word Bank…';
-    gfill.style.width = '55%';
+    /* Only process active parts — use the actual selected type per part */
+    for(const p of activeParts){
+      const raw = all[p.key];
+      if(p.key==='part1') part1 = await prelimEnsureCount(raw, p.count, p.type);
+      if(p.key==='part2') part2 = await prelimEnsureCount(raw, p.count, p.type);
+      if(p.key==='part3') part3 = await prelimEnsureCount(raw, p.count, p.type);
+    }
 
-    const prompt2 = isFil ? `
-Batay sa mga sangguniang dokumento, gumawa ng Word Bank (Fill in the Blanks) na may eksaktong ${wbCount} tanong para sa ${grade} ${subject}.
+    /* ── Word Bank fix: rebuild wordBank from actual item answers ──
+       This guarantees every answer exists in the wordBank and nothing
+       is missing or mismatched. Distractors are pulled from AI extras
+       or fabricated from the answer set itself. */
+    function fixWbWordBank(part){
+      if(!part || !Array.isArray(part.items)) return part;
+      // Collect all correct answers from items
+      const correctAnswers = part.items
+        .map(it => String(it.answer||'').trim())
+        .filter(a => a.length > 0);
+      // Unique correct answers (preserve order of first appearance)
+      const unique = [...new Set(correctAnswers.map(a => a.toLowerCase()))];
+      const answerSet = unique.map(low =>
+        correctAnswers.find(a => a.toLowerCase() === low) || low
+      );
+      // Pull distractors from AI-provided wordBank that are NOT correct answers
+      const existingWb = Array.isArray(part.wordBank) ? part.wordBank : [];
+      const answerSetLow = new Set(answerSet.map(a => a.toLowerCase()));
+      const distractors = existingWb
+        .map(w => String(w).trim())
+        .filter(w => w.length >= 2 && !answerSetLow.has(w.toLowerCase()));
+      // Keep 2-4 distractors
+      const keptDistractors = [...new Set(distractors.map(d=>d.toLowerCase()))]
+        .slice(0, 4)
+        .map(low => distractors.find(d => d.toLowerCase() === low) || low);
+      // Rebuild wordBank = correct answers + distractors, shuffled
+      const combined = [...answerSet, ...keptDistractors];
+      // Fisher-Yates shuffle
+      for(let i = combined.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [combined[i], combined[j]] = [combined[j], combined[i]];
+      }
+      part.wordBank = combined;
+      return part;
+    }
 
-KONTEKSTO:
-${combinedContext}
+    /* ── Answer key cross-check: verify each item's answer is in wordBank ──
+       If an answer is missing from the bank, add it. */
+    function verifyWbAnswerKey(part){
+      if(!part || !Array.isArray(part.items) || !Array.isArray(part.wordBank)) return part;
+      const wbLow = new Set(part.wordBank.map(w => String(w).trim().toLowerCase()));
+      part.items.forEach(it => {
+        const ans = String(it.answer||'').trim();
+        if(ans && !wbLow.has(ans.toLowerCase())){
+          // Answer missing from bank — add it
+          part.wordBank.push(ans);
+          wbLow.add(ans.toLowerCase());
+        }
+      });
+      return part;
+    }
 
-${langNote}
+    /* Apply wb fixes to every active wb-type part */
+    for(const p of activeParts){
+      if(p.type === 'wb'){
+        if(p.key==='part1' && part1){ part1 = fixWbWordBank(part1); part1 = verifyWbAnswerKey(part1); }
+        if(p.key==='part2' && part2){ part2 = fixWbWordBank(part2); part2 = verifyWbAnswerKey(part2); }
+        if(p.key==='part3' && part3){ part3 = fixWbWordBank(part3); part3 = verifyWbAnswerKey(part3); }
+      }
+    }
 
-- Gumawa ng ${wbCount} fill-in-the-blank na pangungusap
-- Isama ang lahat ng sagot sa isang "wordBank" array (10 salita, maaaring may dagdag na 2-3 na panlito)
-- Isama ang pangalan ng kwento/paksa bilang "story" field
-- Sagutin LAMANG ng valid JSON.
-
-{
-  "story": "Pangalan ng Kwento",
-  "wordBank": ["salita1","salita2","salita3"],
-  "items": [
-    {"q": "Si __________ ay pumunta sa bundok.", "answer": "Juan"}
-  ]
-}` : `
-Based on the reference documents, create a Word Bank exercise with exactly ${wbCount} fill-in-the-blank sentences for ${grade} ${subject}.
-
-CONTEXT:
-${combinedContext}
-
-${langNote}
-
-- Create ${wbCount} fill-in-the-blank sentences
-- Include all answers in a "wordBank" array (add 2-3 extra distractor words)
-- Include the story/topic name as "story" field
-- Respond ONLY with valid JSON.
-
-{
-  "story": "Story Name",
-  "wordBank": ["word1","word2","word3"],
-  "items": [
-    {"q": "The __________ went to the mountain.", "answer": "man"}
-  ]
-}`;
-
-    const raw2 = await prelimCallAI(prompt2, apiKey);
-    part2 = JSON.parse(raw2.replace(/```json|```/g,'').trim());
-
-    gstat.textContent = 'Generating Part III — Essay…';
-    gfill.style.width = '80%';
-
-    const prompt3 = isFil ? `
-Batay sa mga sangguniang dokumento, gumawa ng eksaktong ${essayCount} essay na tanong para sa ${grade} ${subject}.
-
-KONTEKSTO:
-${combinedContext}
-
-${langNote}
-
-- Ang bawat tanong ay dapat sumagot ng 1-2 pangungusap
-- Isama ang pangalan ng kwento/paksa bilang "story" field
-- Sagutin LAMANG ng valid JSON.
-
-{
-  "story": "Pangalan ng Kwento",
-  "items": [
-    {"q": "Bakit mahalaga ang... ?"}
-  ]
-}` : `
-Based on the reference documents, create exactly ${essayCount} essay questions for ${grade} ${subject}.
-
-CONTEXT:
-${combinedContext}
-
-${langNote}
-
-- Each question should be answered in 1-2 sentences
-- Include the story/topic name as "story" field
-- Respond ONLY with valid JSON.
-
-{
-  "story": "Story Name",
-  "items": [
-    {"q": "Why is it important that... ?"}
-  ]
-}`;
-
-    const raw3 = await prelimCallAI(prompt3, apiKey);
-    part3 = JSON.parse(raw3.replace(/```json|```/g,'').trim());
+    /* Parts not in activeParts remain null — preview/docx will skip them */
 
     gfill.style.width = '100%';
     gstat.textContent = '✅ Done!';
 
-    prelimResult = { part1, part2, part3, subject, grade, quarter, isFil, tfCount, wbCount, essayCount };
+    prelimResult = { part1, part2, part3, subject, grade, quarter, isFil, tfCount, wbCount, essayCount, type1, type2, type3, activeParts };
     prelimRenderPreview();
     dlBtn.style.display = '';
     toast('✅ Prelim Exam generated successfully!','ts');
+
   } catch(e){
     console.error(e);
     toast('❌ Error generating prelim exam: ' + e.message,'te');
@@ -5307,134 +5674,304 @@ ${langNote}
   genBtn.textContent = '🤖 Generate Prelim Exam';
 }
 
-/* ── AI call for prelim (uses active provider) ── */
-async function prelimCallAI(prompt, apiKey){
+/* ── AI call for prelim (uses active provider) ──
+   Optimizations:
+   - Bumped Gemini maxOutputTokens 2048 → 8192 to prevent JSON truncation
+     (truncated JSON caused parse failures → top-up retries → quota burn).
+   - Bumped Cohere/OpenRouter max_tokens to 4096 for the same reason.
+   - On 429 / quota / rate-limit errors, automatically marks the current key
+     as quota-hit and rotates to the next available key, retrying transparently
+     so users don't see "quota reached" while other keys are still good.
+   - Detects token-limit / MAX_TOKENS finishes and throws a clear error. */
+async function prelimCallAI(prompt, apiKey, _retryDepth){
+  _retryDepth = _retryDepth || 0;
   const keyObj = mkKeys[mkActive] || {};
   const provider = feDetectProvider(apiKey, keyObj.provider);
   const SYS = 'Return only valid JSON. No markdown. No backticks. No explanation.';
 
-  if(provider === 'openai' || provider === 'groq'){
-    const url = provider==='groq'
-      ? 'https://api.groq.com/openai/v1/chat/completions'
-      : 'https://api.openai.com/v1/chat/completions';
-    const model = provider==='groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
-    const r = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model, max_tokens:2048, temperature:0.7,
-        messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
-    const d=await r.json(); return d.choices?.[0]?.message?.content||'';
+  const handleQuotaAndRetry = async (errMsg, status) => {
+    const m = (errMsg||'').toLowerCase();
+    const isQuota = status === 429 || status === 402
+      || m.includes('quota') || m.includes('rate limit') || m.includes('rate_limit')
+      || m.includes('insufficient_quota') || m.includes('resource_exhausted')
+      || m.includes('too many requests');
+    if(isQuota && _retryDepth < 3){
+      try{ markQuota(apiKey); }catch(_){ }
+      const nextKey = getActiveKey();
+      if(nextKey && nextKey !== apiKey){
+        await new Promise(r=>setTimeout(r, 600));
+        return prelimCallAI(prompt, nextKey, _retryDepth + 1);
+      }
+    }
+    throw new Error(errMsg || ('HTTP '+status));
+  };
 
-  } else if(provider === 'mistral'){
-    const r = await fetch('https://api.mistral.ai/v1/chat/completions',{ method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'mistral-small-latest', max_tokens:2048, temperature:0.7,
-        messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.message||e.error?.message||'HTTP '+r.status); }
-    const d=await r.json(); return d.choices?.[0]?.message?.content||'';
+  try {
+    if(provider === 'openai' || provider === 'groq'){
+      const url = provider==='groq'
+        ? 'https://api.groq.com/openai/v1/chat/completions'
+        : 'https://api.openai.com/v1/chat/completions';
+      const model = provider==='groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
+      const r = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+        body:JSON.stringify({ model, max_tokens:4096, temperature:0.7,
+          messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.error?.message||('HTTP '+r.status), r.status); }
+      const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
-  } else if(provider === 'deepseek'){
-    const r = await fetch('https://api.deepseek.com/v1/chat/completions',{ method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'deepseek-chat', max_tokens:2048, temperature:0.7,
-        messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
-    const d=await r.json(); return d.choices?.[0]?.message?.content||'';
+    } else if(provider === 'mistral'){
+      const r = await fetch('https://api.mistral.ai/v1/chat/completions',{ method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+        body:JSON.stringify({ model:'mistral-small-latest', max_tokens:4096, temperature:0.7,
+          messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.message||e.error?.message||('HTTP '+r.status), r.status); }
+      const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
-  } else if(provider === 'cohere'){
-    const r = await fetch('https://api.cohere.com/v2/chat',{ method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'command-r-plus', max_tokens:2048, temperature:0.7,
-        messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.message||'HTTP '+r.status); }
-    const d=await r.json(); return d.message?.content?.[0]?.text||'';
+    } else if(provider === 'deepseek'){
+      const r = await fetch('https://api.deepseek.com/v1/chat/completions',{ method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+        body:JSON.stringify({ model:'deepseek-chat', max_tokens:4096, temperature:0.7,
+          messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.error?.message||('HTTP '+r.status), r.status); }
+      const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
-  } else if(provider === 'openrouter'){
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{ method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,
-        'HTTP-Referer':'https://localhost','X-Title':'Prelim Exam Generator'},
-      body:JSON.stringify({ model:'openrouter/free', max_tokens:2048, temperature:0.7,
-        messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
-    const d=await r.json(); return d.choices?.[0]?.message?.content||'';
+    } else if(provider === 'cohere'){
+      const r = await fetch('https://api.cohere.com/v2/chat',{ method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+        body:JSON.stringify({ model:'command-r-plus', max_tokens:4096, temperature:0.7,
+          messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.message||('HTTP '+r.status), r.status); }
+      const d=await r.json(); return d.message?.content?.[0]?.text||'';
 
-  } else {
-    // Gemini
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ contents:[{parts:[{text:SYS+'\n\n'+prompt}]}],
-        generationConfig:{temperature:0.7,maxOutputTokens:2048,responseMimeType:'application/json'} }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
-    const d=await r.json();
-    try{ return d.candidates[0].content.parts[0].text||''; }
-    catch(_){ throw new Error('Unexpected Gemini response'); }
+    } else if(provider === 'openrouter'){
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{ method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,
+          'HTTP-Referer':'https://localhost','X-Title':'Prelim Exam Generator'},
+        body:JSON.stringify({ model:'openrouter/free', max_tokens:4096, temperature:0.7,
+          messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.error?.message||('HTTP '+r.status), r.status); }
+      const d=await r.json(); return d.choices?.[0]?.message?.content||'';
+
+    } else {
+      // Gemini — bumped maxOutputTokens to 8192 to avoid JSON truncation that was
+      // forcing the top-up retry loop to fire and accelerate quota exhaustion.
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ contents:[{parts:[{text:SYS+'\n\n'+prompt}]}],
+          generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json'} }) });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.error?.message||('HTTP '+r.status), r.status); }
+      const d=await r.json();
+      try{ return d.candidates[0].content.parts[0].text||''; }
+      catch(_){ throw new Error('Unexpected Gemini response'); }
+    }
+  } catch(err){
+    // Network/transient errors: rotate on quota-ish messages, otherwise rethrow.
+    const msg = err && err.message ? err.message : String(err);
+    if(_retryDepth < 3 && /quota|rate.?limit|429|exhaust/i.test(msg)){
+      return handleQuotaAndRetry(msg, 429);
+    }
+    throw err;
   }
 }
 
 /* ── Preview renderer ── */
 function prelimRenderPreview(){
   if(!prelimResult) return;
-  const { part1, part2, part3, subject, grade, quarter, isFil } = prelimResult;
+  const { part1, part2, part3, subject, grade, quarter, isFil, type1, type2, type3 } = prelimResult;
 
-  const p1Label = isFil ? 'Bahagi I. Tama o Mali' : 'Part I. True or False';
-  const p2Label = isFil ? 'Bahagi II. Word Bank' : 'Part II. Word Bank';
-  const p3Label = isFil ? 'Bahagi III. Sanaysay (Essay)' : 'Part III. Essay';
-  const tfInstr = isFil
-    ? `Kwento: <em>${esc(part1.story||'')}</em><br>Sumulat ng <strong>T</strong> kung tama at <strong>M</strong> kung mali.`
-    : `Story: <em>${esc(part1.story||'')}</em><br>Write <strong>T</strong> if the statement is correct and <strong>F</strong> if it is wrong.`;
-  const wbInstr = isFil
-    ? `Kwento: <em>${esc(part2.story||'')}</em><br>Gamitin ang mga salita sa <strong>Word Bank</strong> para sagutan ang mga patlang.`
-    : `Story: <em>${esc(part2.story||'')}</em><br>Use the words in the <strong>Word Bank</strong> to answer the blanks.`;
-  const essayInstr = isFil
-    ? `Kwento: <em>${esc(part3.story||'')}</em><br>Sagutin sa 1-2 pangungusap.`
-    : `Story: <em>${esc(part3.story||'')}</em><br>Answer in 1-2 sentences.`;
+  /* Dynamic label helper */
+  function typeLabel(t, isFil){
+    const map = {
+      tf:            isFil ? 'Tama o Mali'                    : 'True or False',
+      mc:            isFil ? 'Multiple Choice (A-D)'           : 'Multiple Choice (A-D)',
+      identification:isFil ? 'Pagkilala (Identification)'      : 'Identification',
+      matching:      isFil ? 'Pagtatambal (Matching)'          : 'Matching Type',
+      wb:            isFil ? 'Word Bank / Punan ang Patlang'   : 'Word Bank / Fill-in-the-Blank',
+      enumeration:   isFil ? 'Enumeration'                     : 'Enumeration',
+      essay:         isFil ? 'Sanaysay (Essay)'                : 'Essay',
+    };
+    return map[t] || t;
+  }
+  /* t1/t2/t3 used only as fallback; actual types come from resolvedTypes below */
 
-  const items1 = (part1.items||[]).map((it,i)=>
-    `<div style="margin:2px 0;">_____ ${i+1}. ${esc(it.q)}</div>`).join('');
-  const wb = (part2.wordBank||[]).map(w=>`<strong>${esc(w)}</strong>`).join(' • ');
-  const items2 = (part2.items||[]).map((it,i)=>
-    `<div style="margin:2px 0;">${i+1}. ${esc(it.q)}</div>`).join('');
-  const items3 = (part3.items||[]).map((it,i)=>
-    `<div style="margin:4px 0;"><strong>${i+1}.</strong> ${esc(it.q)}<br>
-    <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div>
-    <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div></div>`).join('');
+  /* Part instruction helper */
+  function partInstr(t, part, isFil){
+    if(!part) return '';
+    const story = part.story || '';
+    const storyLine = story ? (isFil ? `Kwento: <em>${esc(story)}</em><br>` : `Story: <em>${esc(story)}</em><br>`) : '';
+    const instrMap = {
+      tf:            isFil ? 'Sumulat ng <strong>T</strong> kung tama at <strong>M</strong> kung mali.' : 'Write <strong>T</strong> if the statement is correct and <strong>F</strong> if it is wrong.',
+      mc:            isFil ? 'Piliin ang tamang sagot. Isulat ang titik ng tamang sagot.' : 'Choose the correct answer. Write the letter of your answer on the blank.',
+      identification:isFil ? 'Sagutin ang bawat tanong ng tamang salita o parirala.' : 'Write the correct word or phrase to complete each statement.',
+      matching:      isFil ? 'Itambal ang Hanay A sa Hanay B. Isulat ang titik ng tamang sagot sa patlang.' : 'Match Column A with Column B. Write the letter of the correct answer on the blank.',
+      wb:            isFil ? 'Gamitin ang mga salita sa <strong>Word Bank</strong> para sagutan ang mga patlang.' : 'Use the words in the <strong>Word Bank</strong> to fill in the blanks.',
+      enumeration:   isFil ? 'Ilista ang hinihiling sa bawat aytem.' : 'List the items being asked in each number.',
+      essay:         isFil ? 'Sagutin sa 1-3 pangungusap.' : 'Answer in 1-3 sentences.',
+    };
+    return storyLine + (instrMap[t] || '');
+  }
+
+  /* Dynamic label helper */
+  function typeLabel(t, isFil){
+    const map = {
+      tf:            isFil ? 'Tama o Mali'                    : 'True or False',
+      mc:            isFil ? 'Multiple Choice (A-D)'           : 'Multiple Choice (A-D)',
+      identification:isFil ? 'Pagkilala (Identification)'      : 'Identification',
+      matching:      isFil ? 'Pagtatambal (Matching)'          : 'Matching Type',
+      wb:            isFil ? 'Word Bank / Punan ang Patlang'   : 'Word Bank / Fill-in-the-Blank',
+      enumeration:   isFil ? 'Enumeration'                     : 'Enumeration',
+      essay:         isFil ? 'Sanaysay (Essay)'                : 'Essay',
+    };
+    return map[t] || t;
+  }
+
+  function partInstr(t, part, isFil){
+    if(!part) return '';
+    const story = part.story || '';
+    const storyLine = story ? (isFil ? `Kwento: <em>${esc(story)}</em><br>` : `Story: <em>${esc(story)}</em><br>`) : '';
+    const instrMap = {
+      tf:            isFil ? 'Sumulat ng <strong>T</strong> kung tama at <strong>M</strong> kung mali.' : 'Write <strong>T</strong> if the statement is correct and <strong>F</strong> if it is wrong.',
+      mc:            isFil ? 'Piliin ang tamang sagot. Isulat ang titik ng tamang sagot.' : 'Choose the correct answer. Write the letter of your answer on the blank.',
+      identification:isFil ? 'Sagutin ang bawat tanong ng tamang salita o parirala.' : 'Write the correct word or phrase to complete each statement.',
+      matching:      isFil ? 'Itambal ang Hanay A sa Hanay B. Isulat ang titik ng tamang sagot sa patlang.' : 'Match Column A with Column B. Write the letter of the correct answer on the blank.',
+      wb:            isFil ? 'Gamitin ang mga salita sa <strong>Word Bank</strong> para sagutan ang mga patlang.' : 'Use the words in the <strong>Word Bank</strong> to fill in the blanks.',
+      enumeration:   isFil ? 'Ilista ang hinihiling sa bawat aytem.' : 'List the items being asked in each number.',
+      essay:         isFil ? 'Sagutin sa 1-3 pangungusap.' : 'Answer in 1-3 sentences.',
+    };
+    return storyLine + (instrMap[t] || '');
+  }
+
+  function renderItems(t, part){
+    if(!part || !Array.isArray(part.items)) return '';
+    const items = part.items;
+    if(t==='tf') return items.map((it,i)=>`<div style="margin:2px 0;">_____ ${i+1}. ${esc(it.q)}</div>`).join('');
+    if(t==='mc'){
+      const L=['A','B','C','D'];
+      return items.map((it,i)=>`
+        <div style="margin:4px 0;"><strong>${i+1}.</strong> ${esc(it.q)}</div>
+        <div style="margin-left:16px;">${(it.options||[]).map((o,oi)=>`<span style="margin-right:14px;">${L[oi]}. ${esc(o)}</span>`).join('')}</div>`).join('');
+    }
+    if(t==='matching'){
+      const L=['A','B','C','D','E','F','G','H','I','J'];
+      const colB=items.map(it=>it.columnB||it.answer||'');
+      const sh=[...colB].sort(()=>Math.random()-0.5);
+      const colALabel=isFil?'Hanay A':'Column A', colBLabel=isFil?'Hanay B':'Column B';
+      return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;margin-top:4px;">
+        <div style="font-weight:700;font-size:11px;color:#555;margin-bottom:4px;">${colALabel}</div>
+        <div style="font-weight:700;font-size:11px;color:#555;margin-bottom:4px;">${colBLabel}</div>
+        ${items.map((it,i)=>`
+          <div style="margin:2px 0;">_____ ${i+1}. ${esc(it.q)}</div>
+          <div style="margin:2px 0;">${L[i]||(i+1)}. ${esc(sh[i]||'')}</div>`).join('')}
+      </div>`;
+    }
+    if(t==='wb'){
+      const wb=(part.wordBank||[]).map(w=>`<strong>${esc(w)}</strong>`).join(' • ');
+      return `<div style="margin-bottom:6px;"><strong>${isFil?'Listahan ng Salita':'Word Bank'}:</strong> ${wb}</div>`+
+        items.map((it,i)=>`<div style="margin:2px 0;">${i+1}. ${esc(it.q)}</div>`).join('');
+    }
+    if(t==='essay') return items.map((it,i)=>`
+        <div style="margin:4px 0;"><strong>${i+1}.</strong> ${esc(it.q)}<br>
+        <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div>
+        <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div></div>`).join('');
+    if(t==='enumeration') return items.map((it,i)=>`
+        <div style="margin:4px 0;"><strong>${i+1}.</strong> ${esc(it.q)}<br>
+        <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div></div>`).join('');
+    return items.map((it,i)=>`<div style="margin:2px 0;">${i+1}. ${esc(it.q)}</div>`).join('');
+  }
+
+  /* Shared logos */
+  const logoL = (typeof feLogoData!=='undefined' && feLogoData.left)  ? feLogoData.left  : '';
+  const logoR = (typeof feLogoData!=='undefined' && feLogoData.right) ? feLogoData.right : '';
+  const logoImg = (src) => src
+    ? `<img src="${src}" alt="logo" style="width:62px;height:62px;object-fit:contain;">`
+    : `<div style="width:62px;height:62px;border:1px dashed #C8D4E6;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9AA;">Logo</div>`;
+  const examTitle = isFil ? 'Pangwakas na Pagsusulit (Prelim Exam)' : `${esc(quarter)} Quarter Prelim Exam`;
+
+  const t1 = (type1 === 'none' ? null : type1) || 'tf';
+  const t2 = (type2 === 'none' ? null : type2) || null;
+  const t3 = (type3 === 'none' ? null : type3) || null;
+
+  /* Assign correct type per active part */
+  const resolvedTypes = { part1: t1, part2: t2, part3: t3 };
+  // Override with actual activeParts mapping (handles reordering)
+  if(prelimResult.activeParts){
+    prelimResult.activeParts.forEach(p => {
+      if(p.key==='part1') resolvedTypes.part1 = p.type;
+      if(p.key==='part2') resolvedTypes.part2 = p.type;
+      if(p.key==='part3') resolvedTypes.part3 = p.type;
+    });
+  }
+
+  const rt1 = resolvedTypes.part1;
+  const rt2 = resolvedTypes.part2;
+  const rt3 = resolvedTypes.part3;
+
+  /* Number active parts sequentially */
+  const romanNums = ['I','II','III'];
+  const bahagi = isFil ? 'Bahagi' : 'Part';
+  let partCounter = 0;
+  function nextPartLabel(type){ return `${bahagi} ${romanNums[partCounter++]}. ${typeLabel(type,isFil)}`; }
+
+  const p1Label = part1 && rt1 ? nextPartLabel(rt1) : null;
+  const p2Label = part2 && rt2 ? nextPartLabel(rt2) : null;
+  const p3Label = part3 && rt3 ? nextPartLabel(rt3) : null;
+
+  function partSection(label, type, part){
+    if(!label || !part) return '';
+    const instr = partInstr(type, part, isFil);
+    const items = renderItems(type, part);
+    return `
+      <div style="font-weight:700;margin:8px 0;">${label} (${(part.items||[]).length} pts)</div>
+      <div style="font-style:italic;font-size:11px;margin-bottom:6px;">${instr}</div>
+      ${items}
+      <hr style="margin:8px 0;">
+    `;
+  }
 
   document.getElementById('prelimPreviewBody').innerHTML = `
-    <div style="text-align:center;font-weight:900;font-size:14px;">UPPER KLINAN SDA SCHOOL INC</div>
-    <div style="text-align:center;font-size:11px;">Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato</div>
-    <div style="text-align:center;font-size:11px;margin-bottom:6px;">School ID: 409417 &nbsp;•&nbsp; "Where Children Enjoy Holistic Learning"</div>
-    <div style="text-align:center;font-weight:700;">${esc(quarter)} Quarter Prelim Exam &nbsp;|&nbsp; SY 2025-2026</div>
-    <div style="text-align:center;font-weight:700;margin-bottom:8px;">${esc(subject)}</div>
-    <div style="margin-bottom:8px;">Name: ___________________________________ &nbsp; Date: _________ &nbsp; Score: _________</div>
-    <hr style="margin:8px 0;">
-    <div style="font-weight:700;margin:8px 0;">${p1Label} (${(part1.items||[]).length} pts)</div>
-    <div style="font-style:italic;font-size:11px;margin-bottom:6px;">${tfInstr}</div>
-    ${items1}
-    <hr style="margin:8px 0;">
-    <div style="font-weight:700;margin:8px 0;">${p2Label} (${(part2.items||[]).length} pts)</div>
-    <div style="font-style:italic;font-size:11px;margin-bottom:4px;">${wbInstr}</div>
-    <div style="margin-bottom:6px;"><strong>${isFil?'Listahan ng Salita':'Word Bank'}:</strong> ${wb}</div>
-    ${items2}
-    <hr style="margin:8px 0;">
-    <div style="font-weight:700;margin:8px 0;">${p3Label} (${(part3.items||[]).length} items)</div>
-    <div style="font-style:italic;font-size:11px;margin-bottom:6px;">${essayInstr}</div>
-    ${items3}
+    <div style="background:linear-gradient(175deg,#EEF4FF,#fff);border:1px solid #D0DCEE;border-radius:8px;padding:14px 18px;margin-bottom:12px;text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px;">
+        ${logoImg(logoL)}
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:14px;font-weight:900;color:#002060;">UPPER KLINAN SDA SCHOOL INC</div>
+          <div style="font-size:10.5px;color:#666;">Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato</div>
+          <div style="font-size:10.5px;color:#C00000;font-style:italic;">School ID: 409417</div>
+          <div style="font-size:10px;color:#C00000;font-style:italic;">"Where Children Enjoy Holistic Learning"</div>
+          <div style="font-size:15px;font-weight:900;color:#002060;margin-top:3px;">${examTitle}</div>
+          <div style="font-size:12px;color:#0070C0;">SY 2025-2026</div>
+          <div style="font-size:13px;font-weight:800;color:#002060;margin-top:2px;">${esc(subject)}</div>
+          <div style="font-size:11px;color:#666;margin-top:2px;">${esc(grade)}</div>
+        </div>
+        ${logoImg(logoR)}
+      </div>
+      <div style="display:flex;gap:20px;margin-top:6px;font-size:12px;border-top:1px solid #D0DCEE;padding-top:7px;text-align:left;">
+        <span>Name: <span style="display:inline-block;width:220px;border-bottom:1.5px solid #555;"></span></span>
+        <span>Date: <span style="display:inline-block;width:90px;border-bottom:1.5px solid #555;"></span></span>
+        <span>Score: <span style="display:inline-block;width:80px;border-bottom:1.5px solid #555;"></span></span>
+      </div>
+    </div>
+    ${partSection(p1Label, rt1, part1)}
+    ${partSection(p2Label, rt2, part2)}
+    ${partSection(p3Label, rt3, part3)}
   `;
   document.getElementById('prelimPreview').style.display = 'block';
 
-  /* Populate answer key panel */
-  const ak1 = (part1.items||[]).map((it,i) =>
-    `<div><strong>${i+1}.</strong> ${(it.answer===true||it.answer==='true') ? (isFil?'T (Tama)':'T (True)') : (it.answer===false||it.answer==='false') ? (isFil?'M (Mali)':'F (False)') : esc(String(it.answer||''))}</div>`
-  ).join('');
-  const ak2 = (part2.items||[]).map((it,i) =>
-    `<div><strong>${i+1}.</strong> ${esc(it.answer||'—')}</div>`
-  ).join('');
-  const akHtml = `
-    <div style="font-weight:700;color:#E65100;margin:6px 0 3px;">${p1Label}:</div>
-    <div style="columns:2;column-gap:20px;margin-bottom:10px;">${ak1}</div>
-    <div style="font-weight:700;color:#E65100;margin:6px 0 3px;">${p2Label}:</div>
-    <div style="columns:2;column-gap:20px;margin-bottom:10px;">${ak2}</div>
-    <div style="font-weight:700;color:#888;margin:6px 0 3px;">${p3Label}: <em style="font-weight:400;">(Open-ended — check model answers in the downloaded Word file)</em></div>
-  `;
+  /* Populate answer key panel — only active parts */
+  function akSection(label, type, part){
+    if(!label || !part) return '';
+    const items = (part.items||[]).map((it,i) => {
+      let ans = '';
+      if(type==='tf') ans = (it.answer===true||it.answer==='true') ? (isFil?'T (Tama)':'T (True)') : (isFil?'M (Mali)':'F (False)');
+      else if(type==='essay'||type==='enumeration') ans = `<em>${esc(it.answer||'(open-ended)')}</em>`;
+      else ans = esc(String(it.answer||'—'));
+      return `<div><strong>${i+1}.</strong> ${ans}</div>`;
+    }).join('');
+    return `
+      <div style="font-weight:700;color:#E65100;margin:6px 0 3px;">${label}:</div>
+      <div style="columns:2;column-gap:20px;margin-bottom:10px;">${items}</div>
+    `;
+  }
+
+  const akHtml = akSection(p1Label,rt1,part1) + akSection(p2Label,rt2,part2) + akSection(p3Label,rt3,part3);
   const akBody = document.getElementById('prelimAnsKeyBody');
   if(akBody) akBody.innerHTML = akHtml;
   /* Reset toggle button */
@@ -5454,37 +5991,37 @@ function prelimToggleAnsKey(){
   btn.textContent    = show ? '🙈 Hide Answer Key' : '👁 Show Answer Key';
 }
 
-/* ── DOCX Download — matches Bible 4 format exactly ── */
+/* ── DOCX Download — dynamic test types, kids-friendly format ── */
 async function prelimDownload(){
   if(!prelimResult){ toast('Generate the exam first.','te'); return; }
 
-  const { part1, part2, part3, subject, grade, quarter, isFil, school } = prelimResult;
+  const { part1, part2, part3, subject, grade, quarter, isFil,
+          type1: t1='tf', type2: t2='wb', type3: t3='essay' } = prelimResult;
   const prepBy = document.getElementById('prepBy')?.value || '';
+  const syVal  = (document.getElementById('prelimSY')?.value || '').trim() || '2025-2026';
 
   // Load docx.js
   if(typeof docx === 'undefined'){
-    await new Promise((res,rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js';
-      s.onload=res; s.onerror=rej; document.head.appendChild(s);
-    });
+    const DOCX_CDNS=['https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js','https://unpkg.com/docx@8.5.0/build/index.umd.js','https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js'];
+    let loaded=false;
+    for(const src of DOCX_CDNS){try{await new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});loaded=true;break;}catch(_){}}
+    if(!loaded){toast('❌ Could not load docx library. Check internet connection.','te');return;}
   }
   const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle,
-          WidthType, UnderlineType, HeadingLevel } = docx;
+          WidthType, UnderlineType, HeadingLevel, Table, TableRow, TableCell, ShadingType } = docx;
 
-  const CM = (n) => Math.round(n * 567); // cm to DXA (1cm ≈ 567 DXA)
-  const iFont = 'Times New Roman';
+  const CM = (n) => Math.round(n * 567);
+  const iFont = 'Comic Sans MS'; // Kids-friendly font for the exam body
 
   const blank = (len=40) => new TextRun({ text: '_'.repeat(len), underline:{ type: UnderlineType.SINGLE } });
   const sp = (n=1) => new TextRun({ text: ' '.repeat(n) });
 
   const hdr = (txt, sz=24, bold=true, align=AlignmentType.CENTER) =>
     new Paragraph({ alignment: align, spacing:{ after:0, before:0 },
-      children:[new TextRun({ text:txt, bold, size:sz, font:iFont })] });
+      children:[new TextRun({ text:txt, bold, size:sz, font:'Franklin Gothic Medium' })] });
 
   const bodyPar = (children, spaceBefore=40, spaceAfter=40, align=AlignmentType.LEFT) =>
-    new Paragraph({ alignment: align, spacing:{ before:spaceBefore, after:spaceAfter },
-      children });
+    new Paragraph({ alignment: align, spacing:{ before:spaceBefore, after:spaceAfter }, children });
 
   const rule = () => new Paragraph({
     spacing:{before:40,after:40},
@@ -5492,38 +6029,197 @@ async function prelimDownload(){
     children:[]
   });
 
-  const p1Label = isFil ? 'Bahagi I. Tama o Mali' : 'Part I. True or False';
-  const p2Label = isFil ? 'Bahagi II. Word Bank' : 'Part II. Word Bank';
-  const p3Label = isFil ? 'Bahagi III. Sanaysay (Essay)' : 'Part III. Essay';
-  const tfPts  = (part1.items||[]).length;
-  const wbPts  = (part2.items||[]).length;
-  const essayPts = (part3.items||[]).length;
+  /* Type label helper */
+  function typeLabel(t, isFil){
+    const map = {
+      tf:            isFil ? 'Tama o Mali'                    : 'True or False',
+      mc:            isFil ? 'Multiple Choice (A-D)'           : 'Multiple Choice (A-D)',
+      identification:isFil ? 'Pagkilala (Identification)'      : 'Identification',
+      matching:      isFil ? 'Pagtatambal (Matching)'          : 'Matching Type',
+      wb:            isFil ? 'Word Bank / Punan ang Patlang'   : 'Word Bank / Fill-in-the-Blank',
+      enumeration:   isFil ? 'Enumeration'                     : 'Enumeration',
+      essay:         isFil ? 'Sanaysay (Essay)'                : 'Essay',
+    };
+    return map[t] || t;
+  }
 
-  const tfInstr = isFil
-    ? `Sumulat ng T kung tama at M kung mali.`
-    : `Write T if the statement is correct and F if it is wrong.`;
-  const wbInstr = isFil
-    ? `Gamitin ang mga salita sa Word Bank para sagutan ang mga patlang. Isulat ang tamang salita sa patlang.`
-    : `Use the words in the Word Bank to answer the blanks. Write the correct word on the line.`;
-  const essayInstr = isFil
-    ? `Sagutin sa 1-2 pangungusap.`
-    : `Answer in 1-2 sentences.`;
+  /* Resolve types from activeParts to prevent mismatch */
+  const activePartsDocx = prelimResult.activeParts || [];
+  const resolvedDocxType = { part1: null, part2: null, part3: null };
+  activePartsDocx.forEach(p => { resolvedDocxType[p.key] = p.type; });
+  const dt1 = resolvedDocxType.part1;
+  const dt2 = resolvedDocxType.part2;
+  const dt3 = resolvedDocxType.part3;
+
+  /* Sequential part labels — only for active/non-null parts */
+  const docxRomans = ['I','II','III'];
+  let docxCounter = 0;
+  function nextDocxLabel(type){ return `Part ${docxRomans[docxCounter++]}. ${typeLabel(type, isFil)}`; }
+  const dp1Label = (dt1 && part1) ? nextDocxLabel(dt1) : null;
+  const dp2Label = (dt2 && part2) ? nextDocxLabel(dt2) : null;
+  const dp3Label = (dt3 && part3) ? nextDocxLabel(dt3) : null;
+
+  const tfPts    = (part1?.items||[]).length;
+  const wbPts    = (part2?.items||[]).length;
+  const essayPts = (part3?.items||[]).length;
+
+  /* Collect only active sections for body + answer key */
+  const activeDocxSections = [];
+  if(dp1Label && dt1 && part1) activeDocxSections.push({ label:dp1Label, type:dt1, part:part1, pts:tfPts });
+  if(dp2Label && dt2 && part2) activeDocxSections.push({ label:dp2Label, type:dt2, part:part2, pts:wbPts });
+  if(dp3Label && dt3 && part3) activeDocxSections.push({ label:dp3Label, type:dt3, part:part3, pts:essayPts });
+
+  /* Per-type instruction text */
+  function typeInstrDocx(t, isFil){
+    const map = {
+      tf:            isFil ? 'Sumulat ng T kung tama at M kung mali.' : 'Write T if the statement is correct and F if it is wrong.',
+      mc:            isFil ? 'Piliin ang tamang sagot. Isulat ang titik ng iyong sagot sa patlang.' : 'Choose the best answer. Write the letter of your answer on the blank.',
+      identification:isFil ? 'Sagutin ang bawat tanong ng tamang salita o parirala. Isulat sa patlang.' : 'Write the correct word or phrase on the blank to complete each statement.',
+      matching:      isFil ? 'Itambal ang Hanay A sa Hanay B. Isulat ang titik ng tamang sagot sa patlang.' : 'Match Column A with Column B. Write the letter of the correct answer on the blank.',
+      wb:            isFil ? 'Gamitin ang mga salita sa Word Bank para sagutan ang mga patlang. Isulat ang tamang salita sa patlang.' : 'Use the words in the Word Bank to fill in the blanks. Write the correct word on the line.',
+      enumeration:   isFil ? 'Ilista ang hinihiling sa bawat aytem.' : 'List the items being asked in each number.',
+      essay:         isFil ? 'Sagutin sa 1-3 pangungusap.' : 'Answer in 1-3 complete sentences.',
+    };
+    return map[t] || '';
+  }
 
   const answerLines = (n=9) => Array.from({length:n}, () =>
     new Paragraph({ spacing:{before:20,after:20},
       children:[new TextRun({ text:'_'.repeat(90), size:20, font:iFont })] })
   );
 
+  /* Build paragraphs for any part based on type */
+  function buildPartDocx(t, part, label, pts, isFil){
+    if(!part || !(part.items||[]).length) return [];
+    const items = part.items;
+    const instrTxt = typeInstrDocx(t, isFil);
+    const story = part.story || '';
+    const storyLabel = isFil ? 'Paksa:' : 'Topic:';
+    const paras = [
+      bodyPar([new TextRun({ text:`${label} (${pts} pts)`, bold:true, size:26, font:'Franklin Gothic Medium' })], 80, 40),
+    ];
+    if(story){
+      paras.push(bodyPar([
+        new TextRun({ text:`${storyLabel} `, bold:true, size:22, font:iFont }),
+        new TextRun({ text: story, italics:true, size:22, font:iFont }),
+      ], 20, 20));
+    }
+    paras.push(bodyPar([
+      new TextRun({ text: '👉 ', size:22, font:iFont }),
+      new TextRun({ text: instrTxt, size:22, font:iFont }),
+    ], 20, 60));
+
+    if(t==='wb' && part.wordBank && part.wordBank.length){
+      const wbLabel = isFil ? 'Listahan ng Salita:' : 'Word Bank:';
+      paras.push(bodyPar([new TextRun({ text: wbLabel, bold:true, size:22, font:iFont })], 20, 10));
+      paras.push(bodyPar([new TextRun({ text: part.wordBank.join('  •  '), bold:true, size:22, font:iFont })], 10, 40));
+    }
+
+    if(t==='tf'){
+      items.forEach(it => {
+        paras.push(new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
+          children:[
+            new TextRun({ text:'_____  ', size:22, font:iFont }),
+            new TextRun({ text: it.q, size:22, font:iFont }),
+          ]}));
+      });
+    } else if(t==='mc'){
+      const letters = ['A','B','C','D'];
+      items.forEach((it,i) => {
+        paras.push(new Paragraph({ spacing:{before:40,after:10}, indent:{left:CM(0.3)},
+          children:[new TextRun({ text:`${i+1}. `, bold:true, size:22, font:iFont }), new TextRun({ text: it.q, size:22, font:iFont })] }));
+        (it.options||[]).forEach((opt,oi) => {
+          paras.push(new Paragraph({ spacing:{before:6,after:6}, indent:{left:CM(0.9)},
+            children:[new TextRun({ text:`${letters[oi]}. ${opt}`, size:22, font:iFont })] }));
+        });
+      });
+    } else if(t==='matching'){
+      const colBItems = items.map(it => it.columnB || it.answer || '');
+      const shuffled = [...colBItems].sort(()=>Math.random()-0.5);
+      const letters = ['A','B','C','D','E','F','G','H','I','J'];
+      const colALabel = isFil ? 'Hanay A' : 'Column A';
+      const colBLabel = isFil ? 'Hanay B' : 'Column B';
+      const border = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
+      const borders = { top:border, bottom:border, left:border, right:border };
+      const cellW = 4320;
+      paras.push(new Table({
+        width:{ size:8640, type:WidthType.DXA },
+        columnWidths:[cellW, cellW],
+        rows:[
+          new TableRow({ children:[
+            new TableCell({ borders, width:{size:cellW,type:WidthType.DXA}, shading:{fill:'D5E8F0',type:ShadingType.CLEAR},
+              margins:{top:80,bottom:80,left:120,right:120},
+              children:[new Paragraph({ children:[new TextRun({ text:colALabel, bold:true, size:22, font:iFont })] })] }),
+            new TableCell({ borders, width:{size:cellW,type:WidthType.DXA}, shading:{fill:'D5E8F0',type:ShadingType.CLEAR},
+              margins:{top:80,bottom:80,left:120,right:120},
+              children:[new Paragraph({ children:[new TextRun({ text:colBLabel, bold:true, size:22, font:iFont })] })] }),
+          ]}),
+          ...items.map((it,i) => new TableRow({ children:[
+            new TableCell({ borders, width:{size:cellW,type:WidthType.DXA}, margins:{top:60,bottom:60,left:120,right:120},
+              children:[new Paragraph({ children:[
+                new TextRun({ text:`_____ ${i+1}. `, size:22, font:iFont }),
+                new TextRun({ text: it.q, size:22, font:iFont }),
+              ]})] }),
+            new TableCell({ borders, width:{size:cellW,type:WidthType.DXA}, margins:{top:60,bottom:60,left:120,right:120},
+              children:[new Paragraph({ children:[
+                new TextRun({ text:`${letters[i]||i+1}. ${shuffled[i]||''}`, size:22, font:iFont }),
+              ]})] }),
+          ]}))
+        ]
+      }));
+    } else if(t==='essay'||t==='enumeration'){
+      items.forEach((it,i) => {
+        paras.push(new Paragraph({ spacing:{before:40,after:20},
+          children:[
+            new TextRun({ text:`${i+1}. `, bold:true, size:22, font:iFont }),
+            new TextRun({ text: it.q, size:22, font:iFont }),
+          ]}));
+        answerLines(t==='enumeration'?3:6).forEach(l => paras.push(l));
+        paras.push(new Paragraph({ spacing:{before:0,after:0}, children:[new TextRun({ text:'.', size:22, font:iFont })] }));
+      });
+    } else {
+      /* identification, wb, or fallback */
+      items.forEach((it,i) => {
+        paras.push(new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
+          children:[
+            new TextRun({ text:`${i+1}.  `, bold:true, size:22, font:iFont }),
+            new TextRun({ text: it.q, size:22, font:iFont }),
+          ]}));
+      });
+    }
+    return paras;
+  }
+
+  /* Answer key items by type */
+  function buildAnsKeyDocx(t, part, isFil){
+    if(!part || !(part.items||[]).length) return [];
+    return (part.items||[]).map((it,i) => {
+      let ans = '';
+      if(t==='tf') ans = (it.answer===true||it.answer==='true') ? 'T' : 'F';
+      else ans = String(it.answer||'');
+      return new Paragraph({ spacing:{before:20,after:20}, indent:{left:CM(0.5)},
+        children:[new TextRun({ text:`${i+1}. ${ans}`, size:20, font:iFont })] });
+    });
+  }
+
   const children = [
     // ── Header ──
-    hdr('UPPER KLINAN SDA SCHOOL INC', 28, true),
-    hdr('Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato', 20, false),
-    hdr('School ID: 409417', 20, false),
-    hdr('"Where Children Enjoy Holistic Learning"', 20, false),
-    hdr(`${quarter} Quarter`, 24, true),
-    hdr('Prelim Exam', 26, true),
-    hdr('SY 2025-2026', 22, true),
-    hdr(subject, 26, true),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+      children:[new TextRun({ text:'UPPER KLINAN SDA SCHOOL INC', bold:true, size:28, color:'002060', font:'Franklin Gothic Medium' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+      children:[new TextRun({ text:'Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato', size:20, font:'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+      children:[new TextRun({ text:'School ID: 409417', size:20, color:'C00000', italics:true, font:'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+      children:[new TextRun({ text:'\u201CWhere Children Enjoy Holistic Learning\u201D', size:20, color:'C00000', italics:true, font:'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:60,after:0},
+      children:[new TextRun({ text:`${quarter} Quarter Prelim Exam`, bold:true, size:26, color:'002060', font:'Franklin Gothic Medium' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+      children:[new TextRun({ text:'SY '+syVal, size:20, color:'0070C0', font:'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+      children:[new TextRun({ text:subject, bold:true, size:26, color:'002060', font:'Franklin Gothic Medium' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:40},
+      children:[new TextRun({ text:grade||'', size:20, color:'555555', italics:true, font:'Times New Roman' })] }),
     new Paragraph({ spacing:{before:80, after:80},
       children:[
         new TextRun({ text:'Name: ', bold:true, size:22, font:iFont }),
@@ -5537,84 +6233,15 @@ async function prelimDownload(){
       ]}),
     rule(),
 
-    // ── PART I ──
-    bodyPar([new TextRun({ text:`${p1Label} (${tfPts} pts)`, bold:true, size:24, font:iFont })], 80, 40),
-    bodyPar([
-      new TextRun({ text:`Story: `, bold:true, size:22, font:iFont }),
-      new TextRun({ text: part1.story||'', italics:true, size:22, font:iFont }),
-    ], 20, 20),
-    bodyPar([
-      new TextRun({ text: '👉 ', size:22, font:iFont }),
-      new TextRun({ text: tfInstr, size:22, font:iFont }),
-    ], 20, 60),
-    ...(part1.items||[]).map(it =>
-      new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
-        children:[
-          new TextRun({ text:'_____  ', size:22, font:iFont }),
-          new TextRun({ text: it.q, size:22, font:iFont }),
-        ]})
-    ),
-    rule(),
-
-    // ── PART II ──
-    bodyPar([new TextRun({ text:`${p2Label} (${wbPts} pts)`, bold:true, size:24, font:iFont })], 80, 40),
-    bodyPar([
-      new TextRun({ text:`Story: `, bold:true, size:22, font:iFont }),
-      new TextRun({ text: part2.story||'', italics:true, size:22, font:iFont }),
-    ], 20, 20),
-    bodyPar([
-      new TextRun({ text:'👉 ', size:22, font:iFont }),
-      new TextRun({ text: wbInstr, size:22, font:iFont }),
-    ], 20, 40),
-    // Word Bank box
-    bodyPar([
-      new TextRun({ text: `${isFil?'Listahan ng Salita':'Word Bank'}:`, bold:true, size:22, font:iFont }),
-    ], 20, 10),
-    bodyPar([
-      new TextRun({ text: (part2.wordBank||[]).join(' • '), bold:true, size:22, font:iFont }),
-    ], 10, 40),
-    ...(part2.items||[]).map((it,i) =>
-      new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
-        children:[
-          new TextRun({ text:`${i+1}.  `, bold:true, size:22, font:iFont }),
-          new TextRun({ text: it.q, size:22, font:iFont }),
-        ]})
-    ),
-    rule(),
-
-    // ── PART III ──
-    bodyPar([new TextRun({ text:`${p3Label} (${essayPts} items 5 pts)`, bold:true, size:24, font:iFont })], 80, 40),
-    bodyPar([
-      new TextRun({ text:`Story: `, bold:true, size:22, font:iFont }),
-      new TextRun({ text: part3.story||'', italics:true, size:22, font:iFont }),
-    ], 20, 20),
-    bodyPar([
-      new TextRun({ text:'👉 ', size:22, font:iFont }),
-      new TextRun({ text: essayInstr, size:22, font:iFont }),
-    ], 20, 40),
-    ...(part3.items||[]).flatMap((it,i) => [
-      new Paragraph({ spacing:{before:40,after:20},
-        children:[
-          new TextRun({ text:`${i+1}. `, bold:true, size:22, font:iFont }),
-          new TextRun({ text: it.q, size:22, font:iFont }),
-        ]}),
-      ...answerLines(9),
-      new Paragraph({ spacing:{before:0,after:0}, children:[new TextRun({ text:'.', size:22, font:iFont })] }),
-    ]),
-    rule(),
+    // ── Active parts only (skips null/none parts) ──
+    ...activeDocxSections.flatMap(s => [...buildPartDocx(s.type, s.part, s.label, s.pts, isFil), rule()]),
 
     // ── ANSWER KEY ──
-    bodyPar([new TextRun({ text: isFil?'SUSI SA PAGWAWASTO (Answer Key)':'ANSWER KEY', bold:true, size:24, font:iFont, color:'2E7D32' })], 80, 40),
-    bodyPar([new TextRun({ text: `${p1Label}:`, bold:true, size:22, font:iFont })], 20, 10),
-    ...(part1.items||[]).map((it,i) =>
-      new Paragraph({ spacing:{before:20,after:20}, indent:{left:CM(0.5)},
-        children:[new TextRun({ text:`${i+1}. ${it.answer===true||it.answer==='true'?'T':'F'}`, size:22, font:iFont })] })
-    ),
-    bodyPar([new TextRun({ text: `${p2Label}:`, bold:true, size:22, font:iFont })], 40, 10),
-    ...(part2.items||[]).map((it,i) =>
-      new Paragraph({ spacing:{before:20,after:20}, indent:{left:CM(0.5)},
-        children:[new TextRun({ text:`${i+1}. ${it.answer||''}`, size:22, font:iFont })] })
-    ),
+    bodyPar([new TextRun({ text: isFil?'SUSI SA PAGWAWASTO (Answer Key)':'ANSWER KEY', bold:true, size:26, font:'Franklin Gothic Medium', color:'2E7D32' })], 80, 40),
+    ...activeDocxSections.flatMap(s => [
+      bodyPar([new TextRun({ text:`${s.label}:`, bold:true, size:22, font:iFont })], 20, 10),
+      ...buildAnsKeyDocx(s.type, s.part, isFil),
+    ]),
   ];
 
   try {
@@ -5629,8 +6256,7 @@ async function prelimDownload(){
         children
       }]
     });
-    const buf = await Packer.toBuffer(doc);
-    const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const blob = await Packer.toBlob(doc);
     const fname = `${subject.replace(/\s+/g,'_')}_${quarter}_Prelim_Exam.docx`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -5776,10 +6402,11 @@ function appReinitWithData() {
   /* 2. Lesson plan state */
   const savedLP = localStorage.getItem('lp_v5');
   if(savedLP) {
-    /* Show restore modal (dismiss existing one first) */
+    /* Show restore modal — restoreDraft() / clearRestore() will call render functions */
     const mo = document.getElementById('restoreMo');
     if(mo) mo.classList.add('show');
   } else {
+    /* Fresh start — initialize and render everything */
     if(typeof initRows === 'function')               initRows();
     if(typeof renderSubs === 'function')             renderSubs();
     if(typeof renderTable === 'function')            renderTable();
@@ -5860,14 +6487,18 @@ fbAuth.onAuthStateChanged(async (user) => {
     /* Pull all saved data from Firebase into localStorage */
     await fbPullAll(user.uid);
 
-    /* Boot the app with the loaded data */
-    appReinitWithData();
-
     /* Update topbar */
     renderUserBadge(user);
 
-    /* Hide overlay */
-    if(overlay) overlay.style.display = 'none';
+    /* Hide overlay FIRST — must be fully gone before modal shows so buttons are clickable */
+    if(overlay){
+      overlay.style.display = 'none';
+      overlay.style.pointerEvents = 'none';
+      overlay.style.visibility = 'hidden';
+    }
+
+    /* Boot the app AFTER overlay is hidden */
+    appReinitWithData();
 
     /* Welcome toast */
     const isOwner = (user.email || '').toLowerCase() === OWNER_EMAIL.toLowerCase();
@@ -5901,5 +6532,315 @@ fbAuth.onAuthStateChanged(async (user) => {
 
 })(); /* end IIFE */
 </script>
+
+<!-- ============================================================
+     EXAM AUDIT MODULE — UPPER KLINAN SDA
+     Adds: audit engine (verbatim mismatch / duplicate options /
+     lazy distractors), warning UI with tooltips, styled error
+     states, inline real-time correction with state sync, and
+     Part IV (Multiple Choice Dropdown) for Prelim Exam.
+     ============================================================ -->
+<style>
+  .audit-item{position:relative;padding:8px 10px;border-radius:6px;border-left:3px solid transparent;transition:background .2s,border-color .2s;}
+  .audit-item.has-error{background:rgba(198,40,40,.07);border-left-color:var(--red,#C62828);}
+  .audit-item.has-warn{background:rgba(255,192,0,.10);border-left-color:var(--gold,#FFC000);}
+  .audit-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:900;color:#fff;margin-right:6px;cursor:help;vertical-align:middle;position:relative;}
+  .audit-badge.err{background:var(--red,#C62828);}
+  .audit-badge.warn{background:#E65100;}
+  .audit-badge.soft{background:var(--gold,#FFC000);color:#1A2340;}
+  .audit-badge:hover .audit-tip,.audit-badge:focus .audit-tip{display:block;}
+  .audit-tip{display:none;position:absolute;left:22px;top:-4px;z-index:50;background:#1A2340;color:#fff;padding:8px 11px;border-radius:6px;font-size:11px;font-weight:600;line-height:1.45;width:240px;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:normal;text-align:left;cursor:default;}
+  .audit-tip strong{color:#FFC000;}
+  .audit-edit{width:100%;padding:4px 6px;border:1px solid var(--border,#DDE3ED);border-radius:4px;font-family:inherit;font-size:inherit;background:#fff;}
+  .audit-edit:focus{outline:none;border-color:var(--blue,#1565C0);box-shadow:0 0 0 2px rgba(21,101,192,.18);}
+  .audit-mc-row{display:grid;grid-template-columns:24px 1fr;gap:6px;align-items:center;margin:3px 0;}
+  .audit-mc-letter{font-weight:700;color:#444;text-align:right;}
+  .audit-correct-row{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;}
+  .audit-correct-row select{padding:3px 6px;border:1px solid var(--border,#DDE3ED);border-radius:4px;font-family:inherit;}
+  .audit-summary{margin:8px 0;padding:8px 11px;border-radius:6px;background:#FFF8E1;border-left:3px solid var(--gold,#FFC000);font-size:12px;font-weight:600;color:#6D4C00;}
+  .audit-summary.clean{background:#E8F5E9;border-left-color:#43A047;color:#1B5E20;}
+</style>
+<script>
+/* ============ EXAM AUDIT ENGINE ============ */
+window.examAudit = function(item){
+  /* item: {question, options:[strings], answer:string}  -> {errors:[], warnings:[], soft:[]} */
+  const out = { errors:[], warnings:[], soft:[] };
+  if(!item) return out;
+  const opts = Array.isArray(item.options) ? item.options.map(o => String(o ?? '')) : [];
+  const ans  = String(item.answer ?? '');
+  const norm = (s) => String(s ?? '').replace(/^\s+|\s+$/g,'');
+  /* Verbatim mismatch — exact case-sensitive match after trim */
+  if(opts.length){
+    const match = opts.some(o => norm(o) === norm(ans));
+    if(!match){
+      out.errors.push('Error: The designated correct answer "'+norm(ans)+'" does not exactly match any of the provided options (case-sensitive).');
+    }
+  }
+  /* Duplicate options */
+  const seen = new Map();
+  opts.forEach((o,i) => {
+    const k = norm(o);
+    if(!k) return;
+    if(seen.has(k)) out.warnings.push('Warning: Duplicate choice detected — "'+k+'" appears more than once.');
+    else seen.set(k,i);
+  });
+  /* Lazy distractors */
+  const LAZY = [/^all of the above$/i,/^none of the above$/i,/^both [a-d] and [a-d]$/i,/^neither [a-d] nor [a-d]$/i,/^all of these$/i,/^none of these$/i];
+  opts.forEach(o => {
+    const k = norm(o);
+    if(LAZY.some(rx => rx.test(k))){
+      out.soft.push('Soft warning: Low-effort distractor detected — "'+k+'". Consider replacing with a content-specific option.');
+    }
+  });
+  return out;
+};
+
+/* Render a warning badge cluster for an audit result */
+window.examAuditBadge = function(audit){
+  const parts = [];
+  if(audit.errors.length){
+    parts.push('<span class="audit-badge err" tabindex="0" aria-label="Error">!<span class="audit-tip"><strong>Error</strong><br>'+audit.errors.map(escapeHtmlAudit).join('<br>')+'</span></span>');
+  }
+  if(audit.warnings.length){
+    parts.push('<span class="audit-badge warn" tabindex="0" aria-label="Warning">!<span class="audit-tip"><strong>Warning</strong><br>'+audit.warnings.map(escapeHtmlAudit).join('<br>')+'</span></span>');
+  }
+  if(audit.soft.length){
+    parts.push('<span class="audit-badge soft" tabindex="0" aria-label="Soft warning">i<span class="audit-tip"><strong>Optimization</strong><br>'+audit.soft.map(escapeHtmlAudit).join('<br>')+'</span></span>');
+  }
+  return parts.join('');
+};
+function escapeHtmlAudit(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function auditClass(a){ return a.errors.length?'audit-item has-error':(a.warnings.length||a.soft.length)?'audit-item has-warn':'audit-item'; }
+
+/* ============ PART IV: MULTIPLE CHOICE (DROPDOWN) ============ */
+/* Storage attached to prelimResult.part4 */
+async function prelimGeneratePartIV(){
+  if(!window.prelimResult){ return; }
+  const mcCount = parseInt(document.getElementById('prelimMC')?.value)||0;
+  if(mcCount<=0){ window.prelimResult.part4 = null; return; }
+  const apiKey = (typeof getActiveKey==='function')?getActiveKey():null;
+  if(!apiKey) return;
+  const { subject, grade, quarter, isFil } = window.prelimResult;
+  const combinedContext = (window.prelimFiles||[]).map((f,i) =>
+    `=== FILE ${i+1} of ${prelimFiles.length}: ${f.name} ===\n[FULL CONTENT — DO NOT SKIP]\n${f.text.slice(0,12000)}\n=== END FILE ${i+1} ===`
+  ).join('\n\n');
+  const lang = isFil ? 'FILIPINO (Tagalog)' : 'ENGLISH';
+  const prompt = `You are a teacher creating Part IV — Multiple Choice (Dropdown) for ${grade} ${subject} ${quarter} Quarter Prelim Exam.
+Read EVERY one of the ${prelimFiles.length} reference files below. Do not skip any file. Create exactly ${mcCount} multiple-choice items in ${lang}.
+Each item has 4 options. The "answer" field MUST be the EXACT verbatim string of the correct option (case-sensitive, trimmed). Avoid lazy distractors like "All of the above", "None of the above", "Both A and B", "Neither A nor B". No duplicate options.
+
+REFERENCE FILES:
+${combinedContext}
+
+Respond ONLY with valid JSON (no markdown, no backticks):
+{
+  "story":"Topic or Story Name",
+  "items":[
+    {"q":"Question text?","options":["Option 1","Option 2","Option 3","Option 4"],"answer":"Option 1"}
+  ]
+}`;
+  try{
+    const raw = await prelimCallAI(prompt, apiKey);
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    window.prelimResult.part4 = parsed;
+  }catch(e){ console.error('Part IV gen failed', e); window.prelimResult.part4 = null; }
+}
+
+/* Hook into prelimGenerate to also generate Part IV */
+(function(){
+  if(typeof window.prelimGenerate !== 'function') return;
+  const orig = window.prelimGenerate;
+  window.prelimGenerate = async function(){
+    await orig.apply(this, arguments);
+    const mcCount = parseInt(document.getElementById('prelimMC')?.value)||0;
+    if(window.prelimResult && mcCount>0){
+      const gstat = document.getElementById('prelimGStat');
+      if(gstat) gstat.textContent = 'Generating Part IV — Multiple Choice…';
+      await prelimGeneratePartIV();
+      if(typeof prelimRenderPreview==='function') prelimRenderPreview();
+      if(gstat) gstat.textContent = '✅ Done (with Part IV)!';
+    }
+  };
+})();
+
+/* ============ PRELIM PREVIEW WRAPPER ============ */
+/* Wraps prelimRenderPreview to append Part IV with audit + inline editing */
+(function(){
+  if(typeof window.prelimRenderPreview !== 'function') return;
+  const orig = window.prelimRenderPreview;
+  window.prelimRenderPreview = function(){
+    orig.apply(this, arguments);
+    renderPart4WithAudit();
+  };
+})();
+
+function renderPart4WithAudit(){
+  const r = window.prelimResult;
+  if(!r) return;
+  const body = document.getElementById('prelimPreviewBody');
+  if(!body) return;
+  /* Remove previous Part IV block if any */
+  body.querySelectorAll('[data-part4-block]').forEach(el => el.remove());
+  if(!r.part4 || !Array.isArray(r.part4.items) || !r.part4.items.length) return;
+
+  const isFil = r.isFil;
+  const label = isFil ? 'Bahagi IV. Multiple Choice (Dropdown)' : 'Part IV. Multiple Choice (Dropdown)';
+  const instr = isFil
+    ? 'Piliin ang tamang sagot mula sa dropdown.'
+    : 'Select the correct answer from the dropdown.';
+
+  const wrap = document.createElement('div');
+  wrap.setAttribute('data-part4-block','1');
+  wrap.innerHTML = `<hr style="margin:8px 0;">
+    <div style="font-weight:700;margin:8px 0;">${escapeHtmlAudit(label)} (${r.part4.items.length} pts)</div>
+    <div style="font-style:italic;font-size:11px;margin-bottom:6px;">Story: <em>${escapeHtmlAudit(r.part4.story||'')}</em><br>${escapeHtmlAudit(instr)}</div>
+    <div id="prelimPart4Audit"></div>
+    <div id="prelimPart4Items"></div>`;
+  body.appendChild(wrap);
+
+  renderPart4Items();
+}
+
+function renderPart4Items(){
+  const r = window.prelimResult;
+  if(!r || !r.part4) return;
+  const host = document.getElementById('prelimPart4Items');
+  const sumHost = document.getElementById('prelimPart4Audit');
+  if(!host) return;
+  const letters = ['A','B','C','D','E','F'];
+  let totalErr=0,totalWarn=0,totalSoft=0;
+  host.innerHTML = r.part4.items.map((it,idx) => {
+    const audit = window.examAudit(it);
+    totalErr += audit.errors.length; totalWarn += audit.warnings.length; totalSoft += audit.soft.length;
+    const badge = window.examAuditBadge(audit);
+    const cls = auditClass(audit);
+    const opts = (it.options||[]).map((o,oi) => `
+      <div class="audit-mc-row">
+        <span class="audit-mc-letter">${letters[oi]}.</span>
+        <input class="audit-edit" data-p4="opt" data-i="${idx}" data-oi="${oi}" value="${escapeHtmlAudit(o)}">
+      </div>`).join('');
+    const ansOptions = (it.options||[]).map(o =>
+      `<option value="${escapeHtmlAudit(o)}"${String(o)===String(it.answer)?' selected':''}>${escapeHtmlAudit(o)}</option>`).join('');
+    return `<div class="${cls}" data-p4-item="${idx}" style="margin-bottom:10px;">
+      <div style="display:flex;gap:6px;align-items:flex-start;">
+        <span style="min-width:24px;font-weight:700;color:#444;">${idx+1}.</span>
+        <span style="flex:1;">${badge}<input class="audit-edit" data-p4="q" data-i="${idx}" value="${escapeHtmlAudit(it.q||'')}" style="display:inline-block;width:calc(100% - 60px);"></span>
+      </div>
+      <div style="margin-left:30px;margin-top:4px;">${opts}</div>
+      <div class="audit-correct-row" style="margin-left:30px;">
+        <span style="font-weight:700;color:#2E7D32;">Correct answer:</span>
+        <select data-p4="ans" data-i="${idx}">${ansOptions}</select>
+      </div>
+    </div>`;
+  }).join('');
+
+  if(sumHost){
+    const clean = totalErr===0 && totalWarn===0 && totalSoft===0;
+    sumHost.innerHTML = clean
+      ? '<div class="audit-summary clean">✅ Audit clean — all Part IV items pass verbatim, duplicate, and distractor checks.</div>'
+      : `<div class="audit-summary">📋 Audit: <strong style="color:#C62828">${totalErr} error${totalErr!==1?'s':''}</strong>, <strong style="color:#E65100">${totalWarn} warning${totalWarn!==1?'s':''}</strong>, <strong style="color:#6D4C00">${totalSoft} soft warning${totalSoft!==1?'s':''}</strong>. Hover ⚠ icons for details. Edit fields below to fix; re-audit is automatic.</div>`;
+  }
+
+  /* Wire real-time edits → state mutation → re-audit */
+  host.querySelectorAll('input.audit-edit, select').forEach(el => {
+    el.addEventListener('input', onPart4Edit);
+    el.addEventListener('change', onPart4Edit);
+  });
+}
+
+function onPart4Edit(e){
+  const el = e.currentTarget;
+  const i  = parseInt(el.dataset.i);
+  const r  = window.prelimResult;
+  if(!r || !r.part4 || !r.part4.items[i]) return;
+  const it = r.part4.items[i];
+  const kind = el.dataset.p4;
+  if(kind==='q') it.q = el.value;
+  else if(kind==='ans') it.answer = el.value;
+  else if(kind==='opt'){
+    const oi = parseInt(el.dataset.oi);
+    it.options = it.options || [];
+    it.options[oi] = el.value;
+  }
+  /* Re-render only this item's audit state (cheap full re-render keeps things simple) */
+  renderPart4Items();
+  /* Restore focus to the edited element */
+  const sel = `[data-p4="${kind}"][data-i="${i}"]` + (el.dataset.oi!==undefined?`[data-oi="${el.dataset.oi}"]`:'');
+  const next = document.querySelector(sel);
+  if(next){ next.focus(); if(next.setSelectionRange && next.value) try{ next.setSelectionRange(next.value.length,next.value.length);}catch(_){} }
+}
+
+/* ============ FINAL EXAM PREVIEW — AUDIT WRAPPER ============ */
+(function(){
+  if(typeof window.feRenderPreview !== 'function') return;
+  const orig = window.feRenderPreview;
+  window.feRenderPreview = function(){
+    orig.apply(this, arguments);
+    decorateFEPreviewWithAudit();
+  };
+})();
+
+function decorateFEPreviewWithAudit(){
+  const items = window.feExamItems;
+  if(!Array.isArray(items) || !items.length) return;
+  const host = document.getElementById('feItemsPreview');
+  if(!host) return;
+  let totalErr=0,totalWarn=0,totalSoft=0;
+  items.forEach((it,idx) => {
+    const audit = window.examAudit({ question: it.question, options: it.choices, answer: it.answer });
+    totalErr += audit.errors.length; totalWarn += audit.warnings.length; totalSoft += audit.soft.length;
+    /* Find the rendered question block by its leading "_____<num>." token */
+    const marker = '_____'+it.num+'.';
+    const span = Array.from(host.querySelectorAll('span')).find(s => s.textContent && s.textContent.trim()===marker);
+    if(!span) return;
+    const wrap = span.parentElement && span.parentElement.parentElement;
+    if(!wrap) return;
+    /* Add audit classes to outer container */
+    wrap.classList.add('audit-item');
+    if(audit.errors.length){ wrap.classList.add('has-error'); }
+    else if(audit.warnings.length||audit.soft.length){ wrap.classList.add('has-warn'); }
+    /* Inject badge before the number */
+    if(!wrap.querySelector('.audit-badge')){
+      const badgeHtml = window.examAuditBadge(audit);
+      if(badgeHtml){
+        const holder = document.createElement('span');
+        holder.innerHTML = badgeHtml;
+        span.parentElement.insertBefore(holder, span);
+      }
+    }
+  });
+  /* Summary banner at top */
+  const existing = document.getElementById('feAuditSummary');
+  if(existing) existing.remove();
+  const sum = document.createElement('div');
+  sum.id='feAuditSummary';
+  const clean = totalErr===0 && totalWarn===0 && totalSoft===0;
+  sum.className = clean ? 'audit-summary clean' : 'audit-summary';
+  sum.innerHTML = clean
+    ? '✅ Audit clean — all final exam items pass verbatim, duplicate, and distractor checks.'
+    : `📋 Audit: <strong style="color:#C62828">${totalErr} error${totalErr!==1?'s':''}</strong>, <strong style="color:#E65100">${totalWarn} warning${totalWarn!==1?'s':''}</strong>, <strong style="color:#6D4C00">${totalSoft} soft warning${totalSoft!==1?'s':''}</strong>. Hover ⚠ icons next to questions for details.`;
+  host.parentElement.insertBefore(sum, host);
+}
+
+/* ============ SUMMATIVE AUDIT (programmatic, exposed for panel) ============ */
+window.auditAllSummatives = function(){
+  if(!window.state || !Array.isArray(state.summatives)) return [];
+  return state.summatives.map((sm,i) => {
+    const items = (sm && sm.items) ? sm.items : [];
+    const audits = items.map(it => window.examAudit({
+      question: it.prompt||it.question||'',
+      options:  it.options||it.choices||[],
+      answer:   it.answer||''
+    }));
+    return { row:i, area:(state.rows[i]?.area)||'', audits,
+      totalErrors: audits.reduce((a,b)=>a+b.errors.length,0),
+      totalWarnings: audits.reduce((a,b)=>a+b.warnings.length,0),
+      totalSoft: audits.reduce((a,b)=>a+b.soft.length,0) };
+  });
+};
+
+console.log('✅ Exam Audit Module loaded. Use window.examAudit({question,options,answer}) or window.auditAllSummatives().');
+</script>
+
 </body>
 </html>
