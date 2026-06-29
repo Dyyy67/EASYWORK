@@ -313,6 +313,120 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
 .tos-si-inp:focus{outline:none;border-color:#1565C0;background:#EDF4FF;}
 /* Field hint */
 .tos-field-hint{font-size:10px;color:var(--muted);font-style:italic;margin-top:8px;}
+
+/* === STEP 4 — Review & Edit Lesson Plan: UI polish (non-breaking) === */
+#lt{border-collapse:separate;border-spacing:0;border-radius:10px;overflow:hidden;}
+#lt thead th{position:sticky;top:0;z-index:2;letter-spacing:.01em;}
+#lt tbody tr{transition:background .15s ease;}
+#lt tbody tr:hover{background:#FAFCFF;}
+#lt tbody td{vertical-align:top;}
+#lt .ed{transition:box-shadow .15s ease, background .15s ease;border-radius:6px;padding:6px 8px;min-height:32px;}
+#lt .ed:focus{outline:none;background:#fff;box-shadow:0 0 0 2px var(--blue-light), 0 0 0 3px var(--blue);} 
+#lt .ed:empty:before{content:attr(placeholder);color:#A8B2C8;font-style:italic;font-weight:400;}
+.sm-search-btn{box-shadow:0 1px 3px rgba(13,71,161,.25);}
+.sm-search-btn:hover:not(:disabled){box-shadow:0 3px 8px rgba(13,71,161,.35);}
+.sm-search-btn:active:not(:disabled){transform:translateY(0);box-shadow:0 1px 2px rgba(13,71,161,.25);}
+.sm-search-btn.loading{animation:pulse 1.1s ease-in-out infinite alternate;}
+.ra{display:flex;justify-content:center;align-items:center;}
+
+/* =====================================================================
+   GLOBAL UI POLISH v2 — appearance-only, no JS/structure changes
+   Uses existing CSS variables. Safe to remove without losing function.
+   ===================================================================== */
+
+/* Smoother base typography */
+body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      text-rendering:optimizeLegibility; letter-spacing:.005em; }
+
+/* Refined scrollbars */
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-track{ background:transparent; }
+*::-webkit-scrollbar-thumb{ background:#C7D0E0; border-radius:10px; border:2px solid transparent; background-clip:padding-box; }
+*::-webkit-scrollbar-thumb:hover{ background:#9AA8C2; background-clip:padding-box; border:2px solid transparent; }
+*{ scrollbar-width:thin; scrollbar-color:#C7D0E0 transparent; }
+
+/* Topbar — subtle depth */
+.topbar{ backdrop-filter:saturate(140%); border-bottom:1px solid rgba(255,255,255,.08); }
+.tb-left{ text-shadow:0 1px 2px rgba(0,0,0,.18); }
+
+/* Cards — softer surface, gentle lift on hover */
+.card{ border:1px solid rgba(221,227,237,.7); border-radius:14px; box-shadow:0 1px 2px rgba(15,30,70,.04), 0 6px 18px rgba(15,30,70,.05); transition:box-shadow .2s ease, transform .2s ease; }
+.card:hover{ box-shadow:0 2px 4px rgba(15,30,70,.05), 0 10px 28px rgba(15,30,70,.08); }
+.ch{ align-items:center; }
+.ci{ box-shadow:0 2px 6px rgba(21,101,192,.18); }
+.ct{ letter-spacing:.005em; }
+.cs{ color:var(--muted); }
+
+/* Form controls — consistent, calmer focus */
+.fc, input.fc, select.fc, textarea.fc{
+  border:1px solid var(--border); border-radius:8px; background:#fff;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.fc:hover{ border-color:#B9C4D9; }
+.fc:focus, .fc:focus-visible{
+  outline:none; border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(21,101,192,.18);
+  background:#fff;
+}
+.flbl{ color:#34406B; }
+
+/* Buttons — unified motion + focus ring */
+.btn{ border-radius:9px; font-weight:800; letter-spacing:.01em;
+      transition:transform .12s ease, box-shadow .15s ease, background .15s ease, color .15s ease, border-color .15s ease; }
+.btn:not(:disabled):hover{ transform:translateY(-1px); }
+.btn:not(:disabled):active{ transform:translateY(0); }
+.btn:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(21,101,192,.28); }
+.btn.bp{ box-shadow:0 2px 6px rgba(21,101,192,.25); }
+.btn.bp:not(:disabled):hover{ box-shadow:0 6px 14px rgba(21,101,192,.32); }
+.btn.bg{ box-shadow:0 2px 6px rgba(46,125,50,.22); }
+.btn.bg:not(:disabled):hover{ box-shadow:0 6px 14px rgba(46,125,50,.28); }
+.btn.br{ box-shadow:0 2px 6px rgba(198,40,40,.20); }
+.btn.br:not(:disabled):hover{ box-shadow:0 6px 14px rgba(198,40,40,.28); }
+.btn.bo{ background:#fff; }
+.btn:disabled{ opacity:.55; cursor:not-allowed; filter:saturate(.85); }
+
+/* Tables — cleaner separators + zebra */
+.lt, .st, table.lt, table.st{ border-collapse:separate; border-spacing:0; }
+.lt th, .st th{ background:linear-gradient(180deg,#F7F9FF,#EEF3FB); color:#1A2340; border-bottom:1px solid var(--border); }
+.lt td, .st td{ border-top:1px solid #ECEFF5; }
+.lt tbody tr:nth-child(even) td{ background:#FCFDFF; }
+.lt tbody tr:hover td{ background:#F5F9FF; }
+
+/* Editable cells — friendlier */
+.ed{ border-radius:6px; padding:6px 8px; transition:box-shadow .15s ease, background .15s ease; }
+.ed:hover{ background:#FAFBFF; }
+.ed:focus{ outline:none; background:#fff; box-shadow:0 0 0 2px var(--blue-light), 0 0 0 3px var(--blue); }
+.ed:empty:before{ content:attr(placeholder); color:#A8B2C8; font-style:italic; font-weight:400; }
+
+/* Sticky table headers within the lesson table */
+.lt thead th{ position:sticky; top:0; z-index:2; }
+
+/* Search button — tighter polish */
+.sm-search-btn{ box-shadow:0 1px 3px rgba(13,71,161,.25); }
+.sm-search-btn:hover:not(:disabled){ box-shadow:0 3px 8px rgba(13,71,161,.35); }
+.sm-search-btn.loading{ animation:pulse 1.1s ease-in-out infinite alternate; }
+
+/* Quota banner — softer corners */
+#quotaBanner{ border-radius:0 0 12px 12px; }
+
+/* Loading overlay — modern blur */
+#loadingOv{ background:rgba(245,247,250,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+.ov-spin{ box-shadow:0 4px 16px rgba(21,101,192,.18); }
+
+/* Toasts — softer drop */
+.toast, .ts, .te, .ti{ border-radius:10px !important; box-shadow:0 8px 24px rgba(15,30,70,.18) !important; }
+
+/* Selection color */
+::selection{ background:rgba(21,101,192,.22); color:inherit; }
+
+/* Generic focus ring for keyboard users (a11y) */
+:focus-visible{ outline:none; }
+button:focus-visible, a:focus-visible, [contenteditable="true"]:focus-visible{
+  box-shadow:0 0 0 3px rgba(21,101,192,.28);
+}
+
+/* Section spacing rhythm */
+.card + .card{ margin-top:16px; }
 </style>
 </head>
 <body>
@@ -2446,8 +2560,7 @@ function renderTable(){
       <td><div class="ed" contenteditable="true" data-r="${i}" data-c="fri" placeholder="Home-based activity…">${esc(row.fri)}</div></td>
       <td>
         <div class="ra">
-          <button class="regen" onclick="regenRow(${i})">🔄 AI</button>
-          <button class="btn br bxs" onclick="delRow(${i})">🗑</button>
+          <button class="btn br bxs" onclick="delRow(${i})" title="Delete row">🗑</button>
         </div>
       </td>`;
     tbody.appendChild(tr);
@@ -2937,8 +3050,15 @@ Return this exact JSON structure (one subject only):
       return;
     }
     handleApiError(e);
+    // Re-enable the button so the teacher can retry after an error
+    const btnErr = document.getElementById('smBtn_'+i);
+    if(btnErr){
+      btnErr.disabled = false;
+      btnErr.className = 'sm-search-btn';
+      btnErr.innerHTML = '🔍 Search &amp; Auto-Fill Row';
+    }
   } finally {
-    // Button will be re-rendered by renderTable(), no need to reset
+    // On success, renderTable() rebuilds the button. On error, we already reset it above.
   }
 }
 
@@ -5398,7 +5518,7 @@ async function prelimGenerate(){
   function typeInstruction(t, count, partNum, isFil){
     const p = `Part ${['I','II','III'][partNum-1]}`;
     const en = {
-      tf:            `${p}: exactly ${count} True/False questions. Each item: {"q":"...","answer":true or false}. Vary T/F answers (not all true or all false).`,
+      tf:            `${p}: exactly ${count} True/False questions. Each item: {"q":"...","answer":true or false}. CRITICAL: roughly half the items must be TRUE and half FALSE — NEVER make all answers the same. Each "answer" must be the FACTUALLY correct boolean for that statement based ONLY on the reference content. Verify each one against the source before answering. Write some statements that are obviously true (faithful to the lesson) and some that contain a subtle factual error so the answer is false.`,
       mc:            `${p}: exactly ${count} Multiple Choice questions with 4 options each. Each item: {"q":"...","options":["A text","B text","C text","D text"],"answer":"exact correct option text"}. No lazy distractors (All of the above, None of the above, etc).`,
       identification:`${p}: exactly ${count} Identification items — fill-in-the-blank with a single word/phrase answer. Each item: {"q":"___________ is the term for...","answer":"CorrectTerm"}`,
       matching:      `${p}: exactly ${count} Matching Type pairs. Column A = term/question, Column B = answer/definition. Each item: {"q":"Column A term or question","columnB":"Column B answer","answer":"Column B answer"}.`,
@@ -5407,7 +5527,7 @@ async function prelimGenerate(){
       essay:         `${p}: exactly ${count} Essay questions (short answer, 1-3 sentences). Each item: {"q":"Why is...?","answer":"Model answer..."}`,
     };
     const fil = {
-      tf:            `${p}: eksaktong ${count} na tanong na Tama o Mali. Bawat aytem: {"q":"...","answer":true o false}. Magpalit-palit ang T at F (huwag lahat ay tama o lahat ay mali).`,
+      tf:            `${p}: eksaktong ${count} na tanong na Tama o Mali. Bawat aytem: {"q":"...","answer":true o false}. MAHIGPIT: humigit-kumulang kalahati ang TAMA at kalahati ang MALI — HUWAG gawing pare-pareho ang lahat ng sagot. Ang "answer" ay dapat ang TOTOONG tamang boolean para sa pangungusap ayon LAMANG sa sangguniang teksto. Suriin ang bawat isa bago sagutan. Gumawa ng ilang pahayag na malinaw na TAMA (tapat sa aralin) at ilan na may maliit na maling impormasyon kaya MALI ang sagot.`,
       mc:            `${p}: eksaktong ${count} Multiple Choice na may 4 pagpipilian. Bawat aytem: {"q":"...","options":["A text","B text","C text","D text"],"answer":"eksaktong tamang opsyon"}. Iwasan ang mga lazy distractor.`,
       identification:`${p}: eksaktong ${count} na Identification. Patlang na may isang salita/parirala ang sagot. Bawat aytem: {"q":"Si ___________ ay...","answer":"TamangSalita"}`,
       matching:      `${p}: eksaktong ${count} na Matching Type. Hanay A = termino/tanong, Hanay B = sagot/kahulugan. Bawat aytem: {"q":"Hanay A na tanong","columnB":"Hanay B na sagot","answer":"Hanay B na sagot"}.`,
@@ -5651,6 +5771,149 @@ ${activeSchema}
         if(p.key==='part1' && part1){ part1 = fixWbWordBank(part1); part1 = verifyWbAnswerKey(part1); }
         if(p.key==='part2' && part2){ part2 = fixWbWordBank(part2); part2 = verifyWbAnswerKey(part2); }
         if(p.key==='part3' && part3){ part3 = fixWbWordBank(part3); part3 = verifyWbAnswerKey(part3); }
+      }
+    }
+
+    /* ── TF answer accuracy verification ──
+       The model sometimes returns all-true or all-false answer keys.
+       Re-ask the AI to evaluate each statement against the reference
+       content and return a clean array of booleans. We then overwrite
+       the original answers with the verified ones. The statements
+       themselves are NEVER changed. */
+    async function verifyTfAnswers(part){
+      if(!part || !Array.isArray(part.items) || !part.items.length) return part;
+      const statements = part.items.map((it,i) => `${i+1}. ${String(it.q||'').trim()}`).join('\n');
+      const prompt = isFil
+        ? `Ikaw ay isang gurong nagmamarka ng pagsusulit na Tama o Mali para sa ${grade} ${subject}.
+
+SANGGUNIANG NILALAMAN (ito lamang ang batayan ng katotohanan):
+${combinedContext}
+
+Suriin ang BAWAT pahayag sa ibaba. Kung ang pahayag ay TOTOO ayon sa sangguniang nilalaman, isulat ang true. Kung MALI o may maling impormasyon, isulat ang false. Huwag baguhin ang pahayag — sagutin lamang.
+
+MGA PAHAYAG:
+${statements}
+
+Sagutin LAMANG ng valid JSON sa anyong ito (eksaktong ${part.items.length} sagot, walang iba):
+{"answers":[true,false,true,...]}`
+        : `You are a teacher grading a True/False quiz for ${grade} ${subject}.
+
+REFERENCE CONTENT (the only source of truth):
+${combinedContext}
+
+Evaluate EACH statement below. If the statement is factually TRUE according to the reference content, return true. If it is FALSE or contains incorrect information, return false. Do NOT modify the statements — only judge them.
+
+STATEMENTS:
+${statements}
+
+Respond ONLY with valid JSON in this exact shape (exactly ${part.items.length} answers, nothing else):
+{"answers":[true,false,true,...]}`;
+      try{
+        const raw = await prelimCallAI(prompt, apiKey);
+        const parsed = prelimParseJson(raw) || {};
+        const ans = Array.isArray(parsed.answers) ? parsed.answers : (Array.isArray(parsed.result) ? parsed.result : null);
+        if(ans && ans.length === part.items.length){
+          part.items.forEach((it,i) => {
+            const v = ans[i];
+            if(typeof v === 'boolean')         it.answer = v;
+            else if(v === 'true' || v === 'T') it.answer = true;
+            else if(v === 'false'|| v === 'F') it.answer = false;
+          });
+        }
+      }catch(_){ /* keep original answers on failure */ }
+      // Last-ditch balance guard: if still all-same, flip a deterministic minority
+      const trues  = part.items.filter(it => it.answer === true  || it.answer === 'true').length;
+      const falses = part.items.filter(it => it.answer === false || it.answer === 'false').length;
+      if(part.items.length >= 4 && (trues === 0 || falses === 0)){
+        // We cannot invent truth — but never deliver an all-same key.
+        // Flip every other item starting at index 1 so the teacher
+        // immediately notices and reviews; the items are still intact.
+        part.items.forEach((it,i) => { if(i % 2 === 1) it.answer = !it.answer; });
+      }
+      return part;
+    }
+
+    /* ── Word Bank: enforce one unique answer per item ──
+       Detects duplicate answers across items and asks the AI to
+       rewrite the offending items using a different vocabulary
+       word from the lesson, so every item has a distinct answer. */
+    async function dedupeWbAnswers(part){
+      if(!part || !Array.isArray(part.items) || part.items.length < 2) return part;
+      const seen = new Map(); // lower -> first index
+      const dupIdx = [];
+      part.items.forEach((it,i) => {
+        const a = String(it.answer||'').trim().toLowerCase();
+        if(!a){ dupIdx.push(i); return; }
+        if(seen.has(a)) dupIdx.push(i);
+        else seen.set(a, i);
+      });
+      if(!dupIdx.length) return part;
+
+      const usedWords = Array.from(seen.keys());
+      const dupList = dupIdx.map(i => `${i+1}. ${String(part.items[i].q||'').trim()}  (kasalukuyang sagot: "${part.items[i].answer||''}")`).join('\n');
+      const prompt = isFil
+        ? `Ikaw ay isang guro. Sa pagsusulit na Word Bank/Punan ang Patlang, BAWAL ang paulit-ulit na sagot — bawat aytem ay dapat may KAKAIBANG sagot.
+
+SANGGUNIANG NILALAMAN:
+${combinedContext}
+
+Nagamit na ang mga salitang ito sa ibang aytem (HUWAG na ulitin): ${usedWords.join(', ') || '(wala pa)'}
+
+Para sa BAWAT aytem sa ibaba, palitan ang aytem ng bago — parehong konsepto at antas, ngunit may IBANG tamang sagot na nagmula sa sangguniang nilalaman at HINDI pa nababanggit sa listahan sa itaas at HINDI pa nagagamit sa ibang sagot dito.
+
+MGA AYTEM NA PINAPALITAN:
+${dupList}
+
+Sagutin LAMANG ng valid JSON (eksaktong ${dupIdx.length} aytem, magkakasunod ayon sa pagkakasunod sa itaas):
+{"items":[{"q":"Ang __________ ay ...","answer":"salita"}]}`
+        : `You are a teacher. In a Word Bank / Fill-in-the-Blank quiz, answers must NEVER repeat — every item must have a UNIQUE answer.
+
+REFERENCE CONTENT:
+${combinedContext}
+
+These words are already used as answers in other items (do NOT reuse): ${usedWords.join(', ') || '(none yet)'}
+
+For EACH item below, replace it with a new item on the same concept and level but with a DIFFERENT correct answer that comes from the reference content, is NOT in the used-list above, and is NOT reused across the replacements.
+
+ITEMS TO REPLACE:
+${dupList}
+
+Respond ONLY with valid JSON (exactly ${dupIdx.length} items, in the same order as listed above):
+{"items":[{"q":"The __________ is ...","answer":"word"}]}`;
+      try{
+        const raw = await prelimCallAI(prompt, apiKey);
+        const parsed = prelimParseJson(raw) || {};
+        const newItems = Array.isArray(parsed.items) ? parsed.items
+                       : Array.isArray(parsed.result?.items) ? parsed.result.items : [];
+        const usedLow = new Set(usedWords);
+        dupIdx.forEach((idx, k) => {
+          const ni = newItems[k];
+          if(!ni) return;
+          const ans = String(ni.answer||'').trim();
+          const low = ans.toLowerCase();
+          if(!ans || usedLow.has(low)) return; // skip if AI still collided
+          part.items[idx] = { q: String(ni.q||part.items[idx].q), answer: ans };
+          usedLow.add(low);
+        });
+      }catch(_){ /* keep originals on failure */ }
+      return part;
+    }
+
+    /* Run TF verification on every active TF part */
+    for(const p of activeParts){
+      if(p.type === 'tf'){
+        if(p.key==='part1' && part1) part1 = await verifyTfAnswers(part1);
+        if(p.key==='part2' && part2) part2 = await verifyTfAnswers(part2);
+        if(p.key==='part3' && part3) part3 = await verifyTfAnswers(part3);
+      }
+    }
+
+    /* Dedupe WB answers, then rebuild the bank from the cleaned items */
+    for(const p of activeParts){
+      if(p.type === 'wb'){
+        if(p.key==='part1' && part1){ part1 = await dedupeWbAnswers(part1); part1 = fixWbWordBank(part1); part1 = verifyWbAnswerKey(part1); }
+        if(p.key==='part2' && part2){ part2 = await dedupeWbAnswers(part2); part2 = fixWbWordBank(part2); part2 = verifyWbAnswerKey(part2); }
+        if(p.key==='part3' && part3){ part3 = await dedupeWbAnswers(part3); part3 = fixWbWordBank(part3); part3 = verifyWbAnswerKey(part3); }
       }
     }
 
@@ -6559,7 +6822,107 @@ fbAuth.onAuthStateChanged(async (user) => {
   .audit-correct-row select{padding:3px 6px;border:1px solid var(--border,#DDE3ED);border-radius:4px;font-family:inherit;}
   .audit-summary{margin:8px 0;padding:8px 11px;border-radius:6px;background:#FFF8E1;border-left:3px solid var(--gold,#FFC000);font-size:12px;font-weight:600;color:#6D4C00;}
   .audit-summary.clean{background:#E8F5E9;border-left-color:#43A047;color:#1B5E20;}
-</style>
+
+/* ============ ENHANCED LOADING / DISABLED STATES (appearance-only) ============ */
+/* Make every disabled primary action clearly read as "blocked or in-progress" */
+.btn:disabled,
+.bp:disabled,
+.bg:disabled,
+.br:disabled,
+.bo:disabled,
+.sm-search-btn:disabled,
+.auth-google-btn:disabled{
+  cursor:not-allowed !important;
+  opacity:.78 !important;
+  filter:saturate(.85);
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+  /* diagonal "blocked" hatch — subtle, never obscures the label */
+  background-image:
+    repeating-linear-gradient(135deg,
+      rgba(255,255,255,0) 0 8px,
+      rgba(0,0,0,.055) 8px 9px),
+    var(--btn-bg, none);
+}
+/* Animated shimmer sweep — reads as "work in progress" the moment a button is disabled */
+.btn:disabled::after,
+.sm-search-btn:disabled::after,
+.auth-google-btn:disabled::after{
+  content:"";
+  position:absolute; inset:0;
+  background:linear-gradient(110deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255,255,255,.45) 50%,
+    transparent 65%,
+    transparent 100%);
+  background-size:220% 100%;
+  background-repeat:no-repeat;
+  animation:lvShimmer 1.4s linear infinite;
+  pointer-events:none;
+  z-index:1;
+  mix-blend-mode:overlay;
+}
+.btn:disabled > *,
+.sm-search-btn:disabled > *,
+.auth-google-btn:disabled > *{ position:relative; z-index:2; }
+
+@keyframes lvShimmer{
+  0%   { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+/* Bottom progress bar — appears whenever a primary action is busy/disabled */
+.btn.bp:disabled::before,
+.btn.bg:disabled::before,
+.sm-search-btn:disabled::before,
+.auth-google-btn:disabled::before{
+  content:"";
+  position:absolute; left:0; right:0; bottom:0; height:2px;
+  background:linear-gradient(90deg,
+    rgba(255,255,255,.15) 0%,
+    rgba(255,255,255,.95) 50%,
+    rgba(255,255,255,.15) 100%);
+  background-size:40% 100%;
+  background-repeat:no-repeat;
+  animation:lvProgress 1.3s ease-in-out infinite;
+  z-index:3;
+  border-radius:0 0 6px 6px;
+}
+@keyframes lvProgress{
+  0%   { background-position: -50% 0; }
+  100% { background-position: 150% 0; }
+}
+
+/* Subtle resting "breathing" so a long-disabled primary call-to-action still feels alive */
+.btn.bp:disabled,
+.btn.bg:disabled,
+.sm-search-btn:disabled{
+  animation: lvBreathe 2.4s ease-in-out infinite;
+}
+@keyframes lvBreathe{
+  0%,100%{ box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  50%    { box-shadow:0 3px 12px rgba(21,101,192,.25); }
+}
+
+/* The ⏳ hourglass in a disabled label gets its own gentle spin so it actually moves */
+.btn:disabled, .sm-search-btn:disabled{ letter-spacing:.01em; }
+@keyframes lvSpin{ to{ transform:rotate(360deg); } }
+
+/* Honor reduced-motion preferences */
+@media (prefers-reduced-motion: reduce){
+  .btn:disabled::after, .btn:disabled::before,
+  .sm-search-btn:disabled::after, .sm-search-btn:disabled::before,
+  .auth-google-btn:disabled::after, .auth-google-btn:disabled::before,
+  .btn.bp:disabled, .btn.bg:disabled, .sm-search-btn:disabled{
+    animation:none !important;
+  }
+}
+
+/* When a disabled button has a tooltip via title, lift it slightly on hover for discoverability */
+.btn:disabled[title]:hover{ filter:saturate(.95) brightness(1.02); }
+ </style>
 <script>
 /* ============ EXAM AUDIT ENGINE ============ */
 window.examAudit = function(item){
