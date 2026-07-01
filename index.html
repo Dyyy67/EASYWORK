@@ -313,120 +313,6 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
 .tos-si-inp:focus{outline:none;border-color:#1565C0;background:#EDF4FF;}
 /* Field hint */
 .tos-field-hint{font-size:10px;color:var(--muted);font-style:italic;margin-top:8px;}
-
-/* === STEP 4 — Review & Edit Lesson Plan: UI polish (non-breaking) === */
-#lt{border-collapse:separate;border-spacing:0;border-radius:10px;overflow:hidden;}
-#lt thead th{position:sticky;top:0;z-index:2;letter-spacing:.01em;}
-#lt tbody tr{transition:background .15s ease;}
-#lt tbody tr:hover{background:#FAFCFF;}
-#lt tbody td{vertical-align:top;}
-#lt .ed{transition:box-shadow .15s ease, background .15s ease;border-radius:6px;padding:6px 8px;min-height:32px;}
-#lt .ed:focus{outline:none;background:#fff;box-shadow:0 0 0 2px var(--blue-light), 0 0 0 3px var(--blue);} 
-#lt .ed:empty:before{content:attr(placeholder);color:#A8B2C8;font-style:italic;font-weight:400;}
-.sm-search-btn{box-shadow:0 1px 3px rgba(13,71,161,.25);}
-.sm-search-btn:hover:not(:disabled){box-shadow:0 3px 8px rgba(13,71,161,.35);}
-.sm-search-btn:active:not(:disabled){transform:translateY(0);box-shadow:0 1px 2px rgba(13,71,161,.25);}
-.sm-search-btn.loading{animation:pulse 1.1s ease-in-out infinite alternate;}
-.ra{display:flex;justify-content:center;align-items:center;}
-
-/* =====================================================================
-   GLOBAL UI POLISH v2 — appearance-only, no JS/structure changes
-   Uses existing CSS variables. Safe to remove without losing function.
-   ===================================================================== */
-
-/* Smoother base typography */
-body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-      text-rendering:optimizeLegibility; letter-spacing:.005em; }
-
-/* Refined scrollbars */
-*::-webkit-scrollbar{ width:10px; height:10px; }
-*::-webkit-scrollbar-track{ background:transparent; }
-*::-webkit-scrollbar-thumb{ background:#C7D0E0; border-radius:10px; border:2px solid transparent; background-clip:padding-box; }
-*::-webkit-scrollbar-thumb:hover{ background:#9AA8C2; background-clip:padding-box; border:2px solid transparent; }
-*{ scrollbar-width:thin; scrollbar-color:#C7D0E0 transparent; }
-
-/* Topbar — subtle depth */
-.topbar{ backdrop-filter:saturate(140%); border-bottom:1px solid rgba(255,255,255,.08); }
-.tb-left{ text-shadow:0 1px 2px rgba(0,0,0,.18); }
-
-/* Cards — softer surface, gentle lift on hover */
-.card{ border:1px solid rgba(221,227,237,.7); border-radius:14px; box-shadow:0 1px 2px rgba(15,30,70,.04), 0 6px 18px rgba(15,30,70,.05); transition:box-shadow .2s ease, transform .2s ease; }
-.card:hover{ box-shadow:0 2px 4px rgba(15,30,70,.05), 0 10px 28px rgba(15,30,70,.08); }
-.ch{ align-items:center; }
-.ci{ box-shadow:0 2px 6px rgba(21,101,192,.18); }
-.ct{ letter-spacing:.005em; }
-.cs{ color:var(--muted); }
-
-/* Form controls — consistent, calmer focus */
-.fc, input.fc, select.fc, textarea.fc{
-  border:1px solid var(--border); border-radius:8px; background:#fff;
-  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.fc:hover{ border-color:#B9C4D9; }
-.fc:focus, .fc:focus-visible{
-  outline:none; border-color:var(--blue);
-  box-shadow:0 0 0 3px rgba(21,101,192,.18);
-  background:#fff;
-}
-.flbl{ color:#34406B; }
-
-/* Buttons — unified motion + focus ring */
-.btn{ border-radius:9px; font-weight:800; letter-spacing:.01em;
-      transition:transform .12s ease, box-shadow .15s ease, background .15s ease, color .15s ease, border-color .15s ease; }
-.btn:not(:disabled):hover{ transform:translateY(-1px); }
-.btn:not(:disabled):active{ transform:translateY(0); }
-.btn:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(21,101,192,.28); }
-.btn.bp{ box-shadow:0 2px 6px rgba(21,101,192,.25); }
-.btn.bp:not(:disabled):hover{ box-shadow:0 6px 14px rgba(21,101,192,.32); }
-.btn.bg{ box-shadow:0 2px 6px rgba(46,125,50,.22); }
-.btn.bg:not(:disabled):hover{ box-shadow:0 6px 14px rgba(46,125,50,.28); }
-.btn.br{ box-shadow:0 2px 6px rgba(198,40,40,.20); }
-.btn.br:not(:disabled):hover{ box-shadow:0 6px 14px rgba(198,40,40,.28); }
-.btn.bo{ background:#fff; }
-.btn:disabled{ opacity:.55; cursor:not-allowed; filter:saturate(.85); }
-
-/* Tables — cleaner separators + zebra */
-.lt, .st, table.lt, table.st{ border-collapse:separate; border-spacing:0; }
-.lt th, .st th{ background:linear-gradient(180deg,#F7F9FF,#EEF3FB); color:#1A2340; border-bottom:1px solid var(--border); }
-.lt td, .st td{ border-top:1px solid #ECEFF5; }
-.lt tbody tr:nth-child(even) td{ background:#FCFDFF; }
-.lt tbody tr:hover td{ background:#F5F9FF; }
-
-/* Editable cells — friendlier */
-.ed{ border-radius:6px; padding:6px 8px; transition:box-shadow .15s ease, background .15s ease; }
-.ed:hover{ background:#FAFBFF; }
-.ed:focus{ outline:none; background:#fff; box-shadow:0 0 0 2px var(--blue-light), 0 0 0 3px var(--blue); }
-.ed:empty:before{ content:attr(placeholder); color:#A8B2C8; font-style:italic; font-weight:400; }
-
-/* Sticky table headers within the lesson table */
-.lt thead th{ position:sticky; top:0; z-index:2; }
-
-/* Search button — tighter polish */
-.sm-search-btn{ box-shadow:0 1px 3px rgba(13,71,161,.25); }
-.sm-search-btn:hover:not(:disabled){ box-shadow:0 3px 8px rgba(13,71,161,.35); }
-.sm-search-btn.loading{ animation:pulse 1.1s ease-in-out infinite alternate; }
-
-/* Quota banner — softer corners */
-#quotaBanner{ border-radius:0 0 12px 12px; }
-
-/* Loading overlay — modern blur */
-#loadingOv{ background:rgba(245,247,250,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
-.ov-spin{ box-shadow:0 4px 16px rgba(21,101,192,.18); }
-
-/* Toasts — softer drop */
-.toast, .ts, .te, .ti{ border-radius:10px !important; box-shadow:0 8px 24px rgba(15,30,70,.18) !important; }
-
-/* Selection color */
-::selection{ background:rgba(21,101,192,.22); color:inherit; }
-
-/* Generic focus ring for keyboard users (a11y) */
-:focus-visible{ outline:none; }
-button:focus-visible, a:focus-visible, [contenteditable="true"]:focus-visible{
-  box-shadow:0 0 0 3px rgba(21,101,192,.28);
-}
-
-/* Section spacing rhythm */
-.card + .card{ margin-top:16px; }
 </style>
 </head>
 <body>
@@ -783,11 +669,16 @@ button:focus-visible, a:focus-visible, [contenteditable="true"]:focus-visible{
           <label class="flbl">Part I — Test Type</label>
           <select class="fc" id="prelimType1" onchange="debounceSave()" title="Choose the type of test for Part I">
             <option value="tf">True or False</option>
+            <option value="smile_sad">Smile or Sad</option>
+            <option value="check_x">Check or X</option>
+            <option value="heart_thunder">Heart or Thunder</option>
             <option value="mc">Multiple Choice (A-D)</option>
             <option value="identification">Identification</option>
             <option value="matching">Matching Type</option>
             <option value="wb">Word Bank / Fill-in</option>
             <option value="enumeration">Enumeration</option>
+            <option value="sequencing">Sequencing</option>
+            <option value="odd_one_out">Odd One Out</option>
             <option value="essay">Essay</option>
             <option value="none">— None (Skip this part) —</option>
           </select>
@@ -799,10 +690,15 @@ button:focus-visible, a:focus-visible, [contenteditable="true"]:focus-visible{
           <select class="fc" id="prelimType2" onchange="debounceSave()" title="Choose the type of test for Part II">
             <option value="wb">Word Bank / Fill-in</option>
             <option value="tf">True or False</option>
+            <option value="smile_sad">Smile or Sad</option>
+            <option value="check_x">Check or X</option>
+            <option value="heart_thunder">Heart or Thunder</option>
             <option value="mc">Multiple Choice (A-D)</option>
             <option value="identification">Identification</option>
             <option value="matching">Matching Type</option>
             <option value="enumeration">Enumeration</option>
+            <option value="sequencing">Sequencing</option>
+            <option value="odd_one_out">Odd One Out</option>
             <option value="essay">Essay</option>
             <option value="none">— None (Skip this part) —</option>
           </select>
@@ -814,11 +710,16 @@ button:focus-visible, a:focus-visible, [contenteditable="true"]:focus-visible{
           <select class="fc" id="prelimType3" onchange="debounceSave()" title="Choose the type of test for Part III">
             <option value="essay">Essay</option>
             <option value="tf">True or False</option>
+            <option value="smile_sad">Smile or Sad</option>
+            <option value="check_x">Check or X</option>
+            <option value="heart_thunder">Heart or Thunder</option>
             <option value="mc">Multiple Choice (A-D)</option>
             <option value="identification">Identification</option>
             <option value="matching">Matching Type</option>
             <option value="wb">Word Bank / Fill-in</option>
             <option value="enumeration">Enumeration</option>
+            <option value="sequencing">Sequencing</option>
+            <option value="odd_one_out">Odd One Out</option>
             <option value="none">— None (Skip this part) —</option>
           </select>
           <input class="fc" id="prelimEssay" type="number" value="2" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items">
@@ -830,10 +731,15 @@ button:focus-visible, a:focus-visible, [contenteditable="true"]:focus-visible{
             <option value="none">— None (Skip this part) —</option>
             <option value="mc">Multiple Choice (A-D)</option>
             <option value="tf">True or False</option>
+            <option value="smile_sad">Smile or Sad</option>
+            <option value="check_x">Check or X</option>
+            <option value="heart_thunder">Heart or Thunder</option>
             <option value="identification">Identification</option>
             <option value="matching">Matching Type</option>
             <option value="wb">Word Bank / Fill-in</option>
             <option value="enumeration">Enumeration</option>
+            <option value="sequencing">Sequencing</option>
+            <option value="odd_one_out">Odd One Out</option>
             <option value="essay">Essay</option>
           </select>
           <input class="fc" id="prelimMC" type="number" value="0" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items (0 = skip)" title="Set to 0 or choose None to skip Part IV.">
@@ -1207,6 +1113,9 @@ const MKKEYS_K  = 'lp_multikeys'; // multi-key storage key
 
 const SUMMATIVE_TYPES = [
   'True or False',
+  'Smile or Sad',
+  'Check or X',
+  'Heart or Thunder',
   'Matching Type',
   'Word Bank',
   'Identification',
@@ -1217,6 +1126,8 @@ const SUMMATIVE_TYPES = [
   'Problem Solving',
   'Oral Recitation',
   'Practical Test',
+  'Sequencing',
+  'Odd One Out',
 ];
 
 /* ════════════════════════════════
@@ -1922,6 +1833,9 @@ function buildSummativePrompt(row, itemCount, testTypes) {
     const n = types.length === 2 ? (idx === 0 ? countA : countB) : itemCount;
     const hints = {
       'True or False': 'Write ' + n + ' clear factual statements pupils mark as True or False. Each prompt is a complete statement. The answer must be exactly True or False.',
+      'Smile or Sad': 'Write ' + n + ' clear factual statements pupils mark by drawing a SMILE face if the statement is TRUE, or a SAD face if it is FALSE. Each prompt is a complete statement, written exactly like a True or False item. The answer must be exactly True or False (True = Smile, False = Sad).',
+      'Check or X': 'Write ' + n + ' clear factual statements pupils mark by drawing a CHECK (✓) if the statement is TRUE, or an X (✗) if it is FALSE. Each prompt is a complete statement, written exactly like a True or False item. The answer must be exactly True or False (True = Check, False = X).',
+      'Heart or Thunder': 'Write ' + n + ' clear factual statements pupils mark by drawing a HEART if the statement is TRUE, or a THUNDER BOLT if it is FALSE. Each prompt is a complete statement, written exactly like a True or False item. The answer must be exactly True or False (True = Heart, False = Thunder).',
       'Matching Type': 'Generate exactly ' + n + ' matching pairs. For EACH item: prompt = Column A entry (term or question), columnB = the correct Column B match (definition or answer). Also copy the Column B text into answer. Never merge both columns into one field.',
       'Word Bank': 'Include a top-level wordBank array with ' + n + ' answer words plus 3 extra distractors. Each item prompt is a sentence with _______ for the blank. answer is the correct word from the bank.',
       'Identification': 'Write ' + n + ' clue sentences or descriptions. answer is the specific word, name, or short phrase (1-4 words) that identifies what is described.',
@@ -1932,12 +1846,16 @@ function buildSummativePrompt(row, itemCount, testTypes) {
       'Problem Solving': 'Write ' + n + ' problems with clear steps. answer shows the correct solution with working.',
       'Oral Recitation': 'Write ' + n + ' prompts for oral response. answer contains the expected spoken response.',
       'Practical Test': 'Write ' + n + ' skill demonstration instructions. answer describes the correct procedure.',
+      'Sequencing': 'Generate exactly ' + n + ' sequencing items. For EACH item: prompt = instruction telling pupils to arrange events in correct order, items = array of 4-5 SCRAMBLED event/step strings (out of order), answer = correct order as numbers referencing positions in the "items" array (e.g. "3, 1, 4, 2").',
+      'Odd One Out': 'Generate exactly ' + n + ' odd-one-out items. For EACH item: prompt = instruction asking pupils to pick the item that does not belong, options = array of exactly 4 short choice strings where 3 share something in common and 1 does not, answer = the EXACT string (character-for-character) of the option that does not belong, explanation = one short sentence explaining why.',
     };
     return '  \u2022 "' + t + '": ' + (hints[t] || ('Exactly ' + n + ' items. Follow standard format.'));
   }).join('\n');
 
   const matchingType = types.includes('Matching Type');
   const wordBankType = types.includes('Word Bank');
+  const sequencingType = types.includes('Sequencing');
+  const oddOneOutType = types.includes('Odd One Out');
 
   return `You are an expert Filipino elementary school assessment writer for ${school}.
 Return ONLY raw valid JSON. No markdown, no backticks, no explanation.
@@ -1972,12 +1890,15 @@ CRITICAL JSON RULES (follow EXACTLY to avoid format errors):
 - Output ONE JSON object only. Use straight double quotes ("). No trailing commas. No markdown, no comments.
 - Matching Type items: "prompt" = Column A text ONLY, "columnB" = Column B text ONLY, "answer" = same as columnB. Never put both columns in "prompt".
 - Word Bank type: include a top-level "wordBank" array with answer words plus 3 distractors.
+- Sequencing items: "items" = array of 4-5 SCRAMBLED strings, "answer" = correct order as numbers (e.g. "3, 1, 4, 2") referencing positions in the "items" array.
+- Odd One Out items: "options" = array of exactly 4 strings, "answer" = MUST EXACTLY match one of the "options" strings character-for-character (no abbreviating or rewording), "explanation" = brief reason.
+- ANSWER KEY INTEGRITY (CRITICAL): for ALL test types that provide choices/options (Matching Type, Odd One Out, Multiple Choice), the "answer" string MUST EXACTLY match one of the corresponding choices character-for-character.
 - No "points" field anywhere. No item count in instructions.
 
 Return this exact JSON shape:
-{"testTypes":${JSON.stringify(types)},"title":"[test title]","instructions":"[what to do — no item count]",${wordBankType ? '"wordBank":["word1","word2","word3"],' : ''}"items":[{"number":1,"format":"${types[0]}","prompt":"[Column A text or question]",${matchingType ? '"columnB":"[Column B match]",' : ''}"answer":"[correct answer]"}]}
+{"testTypes":${JSON.stringify(types)},"title":"[test title]","instructions":"[what to do — no item count]",${wordBankType ? '"wordBank":["word1","word2","word3"],' : ''}"items":[{"number":1,"format":"${types[0]}","prompt":"[Column A text or question]",${matchingType ? '"columnB":"[Column B match]",' : ''}${sequencingType ? '"items":["[scrambled item 1]","[scrambled item 2]","[scrambled item 3]","[scrambled item 4]"],' : ''}${oddOneOutType ? '"options":["[option A]","[option B]","[option C]","[option D]"],"explanation":"[brief reason]",' : ''}"answer":"[correct answer]"}]}
 
-The "answer" field must always be filled: True/False items use "True" or "False", Matching Type uses the Column B text, Fill/Identification uses the exact word or phrase, Essay uses a 1-2 sentence model answer.`;
+The "answer" field must always be filled: True/False, Smile or Sad, Check or X, and Heart or Thunder items ALL use exactly "True" or "False" (same schema as True or False — only the pupil-facing icons differ), Matching Type uses the Column B text, Fill/Identification uses the exact word or phrase, Essay uses a 1-2 sentence model answer, Sequencing uses the correct order as numbers (e.g. "3, 1, 4, 2"), Odd One Out uses the exact text of the option that does not belong.`;
 }
 
 async function fetchAIPrompt(prompt, maxTokens = 4096, images = []) {
@@ -2444,6 +2365,48 @@ function exportSummativeDOCX(i) {
         itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
       });
 
+    } else if (fmt === 'Sequencing') {
+      // --- Render each scrambled item with a blank box [ ___ ] for the pupil's numeric answer ---
+      grouped[fmt].forEach(it => {
+        itemsBlock += para(`${it.number}. ${it.prompt || ''}`, { sz: 20, bold: true, color: '4527A0' });
+        const seqItems = Array.isArray(it.items) ? it.items : [];
+        seqItems.forEach(s => {
+          itemsBlock += para(`     [     ]   ${s}`, { sz: 20 });
+        });
+        itemsBlock += '<w:p/>';
+      });
+
+    } else if (fmt === 'Odd One Out') {
+      // --- Render choices in a 2x2 grid table ---
+      grouped[fmt].forEach(it => {
+        itemsBlock += para(`${it.number}. ${it.prompt || ''}`, { sz: 20, bold: true, color: '00695C' });
+        const opts = Array.isArray(it.options) ? it.options : [];
+        const letters = ['A','B','C','D'];
+        const bdr = `<w:top w:val="single" w:sz="4" w:color="00897B"/><w:left w:val="single" w:sz="4" w:color="00897B"/><w:bottom w:val="single" w:sz="4" w:color="00897B"/><w:right w:val="single" w:sz="4" w:color="00897B"/>`;
+        const cell = (txt) => `<w:tc><w:tcPr><w:tcW w:w="4320" w:type="dxa"/><w:tcBorders>${bdr}</w:tcBorders></w:tcPr><w:p><w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">${x(txt)}</w:t></w:r></w:p></w:tc>`;
+        let tbl = `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>`;
+        for(let r = 0; r < opts.length; r += 2){
+          tbl += `<w:tr>${cell(letters[r]+'. '+(opts[r]||''))}${cell(letters[r+1]+'. '+(opts[r+1]||''))}</w:tr>`;
+        }
+        tbl += `</w:tbl>`;
+        itemsBlock += tbl + '<w:p/>';
+      });
+
+    } else if (fmt === 'Smile or Sad' || fmt === 'Check or X' || fmt === 'Heart or Thunder') {
+      // --- True/False-style items, marked with colored icons instead of T/F ---
+      const iconDef = {
+        'Smile or Sad':    { trueIcon: '\u263A', falseIcon: '\u2639', trueLabel: 'Smile', falseLabel: 'Sad',     color: '2E7D32' },
+        'Check or X':      { trueIcon: '\u2713', falseIcon: '\u2717', trueLabel: 'Check', falseLabel: 'X',        color: '1565C0' },
+        'Heart or Thunder':{ trueIcon: '\u2665', falseIcon: '\u26A1', trueLabel: 'Heart', falseLabel: 'Thunder', color: 'AD1457' },
+      }[fmt];
+      itemsBlock += para(
+        `${iconDef.trueIcon} = ${iconDef.trueLabel} (TRUE)      ${iconDef.falseIcon} = ${iconDef.falseLabel} (FALSE)`,
+        { bold: true, color: iconDef.color, sz: 20 }
+      );
+      grouped[fmt].forEach(it => {
+        itemsBlock += para(`${it.number}.   [        ]   ${it.prompt || ''}`, { sz: 20 });
+      });
+
     } else {
       // --- All other types: plain numbered list ---
       grouped[fmt].forEach(it => {
@@ -2505,8 +2468,19 @@ function exportSummativeDOCX(i) {
     Object.keys(grouped).forEach(fmt => {
       if (!grouped[fmt].length) return;
       akBlock += para(fmt + ':', { bold: true, color: 'E65100', sz: 18 });
+      const akIconDef = {
+        'Smile or Sad':    { trueIcon: '\u263A', falseIcon: '\u2639', trueLabel: 'Smile', falseLabel: 'Sad',     trueColor: '2E7D32', falseColor: 'C62828' },
+        'Check or X':      { trueIcon: '\u2713', falseIcon: '\u2717', trueLabel: 'Check', falseLabel: 'X',        trueColor: '1565C0', falseColor: 'C62828' },
+        'Heart or Thunder':{ trueIcon: '\u2665', falseIcon: '\u26A1', trueLabel: 'Heart', falseLabel: 'Thunder', trueColor: 'AD1457', falseColor: '6A1B9A' },
+      }[fmt];
       grouped[fmt].forEach(it => {
-        akBlock += para(it.number + '. ' + x(it.answer || '\u2014'), { sz: 18 });
+        if (akIconDef) {
+          const isTrue = it.answer === true || it.answer === 'True' || it.answer === 'true';
+          const label = isTrue ? `${akIconDef.trueIcon} ${akIconDef.trueLabel}` : `${akIconDef.falseIcon} ${akIconDef.falseLabel}`;
+          akBlock += para(it.number + '. ' + label, { sz: 18, bold: true, color: isTrue ? akIconDef.trueColor : akIconDef.falseColor });
+        } else {
+          akBlock += para(it.number + '. ' + x(it.answer || '\u2014'), { sz: 18 });
+        }
       });
       akBlock += '<w:p/>';
     });
@@ -2560,7 +2534,8 @@ function renderTable(){
       <td><div class="ed" contenteditable="true" data-r="${i}" data-c="fri" placeholder="Home-based activity…">${esc(row.fri)}</div></td>
       <td>
         <div class="ra">
-          <button class="btn br bxs" onclick="delRow(${i})" title="Delete row">🗑</button>
+          <button class="regen" onclick="regenRow(${i})">🔄 AI</button>
+          <button class="btn br bxs" onclick="delRow(${i})">🗑</button>
         </div>
       </td>`;
     tbody.appendChild(tr);
@@ -3050,15 +3025,8 @@ Return this exact JSON structure (one subject only):
       return;
     }
     handleApiError(e);
-    // Re-enable the button so the teacher can retry after an error
-    const btnErr = document.getElementById('smBtn_'+i);
-    if(btnErr){
-      btnErr.disabled = false;
-      btnErr.className = 'sm-search-btn';
-      btnErr.innerHTML = '🔍 Search &amp; Auto-Fill Row';
-    }
   } finally {
-    // On success, renderTable() rebuilds the button. On error, we already reset it above.
+    // Button will be re-rendered by renderTable(), no need to reset
   }
 }
 
@@ -4375,7 +4343,6 @@ async function feRawCall(prompt, apiKey, provider){
     if(status === 429) return true;
     const code = String(errBody?.error?.code || errBody?.error?.type || '').toLowerCase();
     const msg  = String(errBody?.error?.message || errBody?.message || '').toLowerCase();
-    // Only flag quota on very specific signals — NOT generic "quota" mentions
     return (
       code.includes('rate_limit_exceeded') ||
       code.includes('insufficient_quota') ||
@@ -4389,6 +4356,18 @@ async function feRawCall(prompt, apiKey, provider){
     );
   }
 
+  /* Helper: transient server overload — wait & retry, do NOT rotate key */
+  function isOverloaded(status, errBody){
+    if(status === 503 || status === 529) return true;
+    const msg = String(errBody?.error?.message || errBody?.message || '').toLowerCase();
+    return (
+      (status === 500 && (msg.includes('high demand') || msg.includes('overloaded') || msg.includes('try again')))
+      || msg.includes('high demand') || msg.includes('spikes in demand')
+      || msg.includes('service unavailable') || msg.includes('overloaded')
+      || msg.includes('temporarily unavailable')
+    );
+  }
+
   if(provider === 'openai'){
     const r = await fetch('https://api.openai.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
@@ -4398,6 +4377,7 @@ async function feRawCall(prompt, apiKey, provider){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||'HTTP '+r.status);
     }
@@ -4412,6 +4392,7 @@ async function feRawCall(prompt, apiKey, provider){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||'HTTP '+r.status);
     }
@@ -4426,6 +4407,7 @@ async function feRawCall(prompt, apiKey, provider){
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
       if(r.status===401) throw new Error('Unauthorized — check your DeepSeek key.');
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||'DeepSeek HTTP '+r.status);
     }
@@ -4441,6 +4423,7 @@ async function feRawCall(prompt, apiKey, provider){
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
       if(r.status===401) throw new Error('Unauthorized — check your Mistral key.');
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||e.message||'Mistral HTTP '+r.status);
     }
@@ -4457,6 +4440,7 @@ async function feRawCall(prompt, apiKey, provider){
       const e=await r.json().catch(()=>({}));
       const rawMeta = e.error?.metadata?.raw;
       const inner = rawMeta ? (() => { try { return JSON.parse(rawMeta); } catch(_){ return null; } })() : null;
+      if(isOverloaded(r.status, inner||e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status, inner||e)) throw new Error('QUOTA');
       throw new Error(inner?.error?.message || e.error?.message || 'OpenRouter HTTP '+r.status);
     }
@@ -4470,6 +4454,7 @@ async function feRawCall(prompt, apiKey, provider){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||'NVIDIA HTTP '+r.status);
     }
@@ -4483,6 +4468,7 @@ async function feRawCall(prompt, apiKey, provider){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||'Together HTTP '+r.status);
     }
@@ -4496,6 +4482,7 @@ async function feRawCall(prompt, apiKey, provider){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.message||'Cohere HTTP '+r.status);
     }
@@ -4512,6 +4499,7 @@ async function feRawCall(prompt, apiKey, provider){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||'Custom API HTTP '+r.status);
     }
@@ -4529,6 +4517,7 @@ async function feRawCall(prompt, apiKey, provider){
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
+      if(isOverloaded(r.status,e)) throw new Error('OVERLOAD');
       if(isRealQuota(r.status,e)) throw new Error('QUOTA');
       throw new Error(e.error?.message||'Gemini HTTP '+r.status);
     }
@@ -4611,9 +4600,17 @@ async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipi
           await new Promise(r => setTimeout(r, 800));
 
       } catch(e){
-        const isQuota = e.message === 'QUOTA'; // ONLY the typed signal from feRawCall
+        const isQuota    = e.message === 'QUOTA';
+        const isOverload = e.message === 'OVERLOAD';
 
-        if(isQuota){
+        if(isOverload){
+          /* Transient server overload — wait with backoff, retry same key */
+          const waitMs = Math.min(1500 * Math.pow(2, attempts - 1), 20000);
+          console.warn(`[FE] Server overloaded, waiting ${waitMs}ms before retry (attempt ${attempts})…`);
+          await new Promise(r => setTimeout(r, waitMs));
+          attempts = Math.max(0, attempts - 1); // don't burn a content retry
+
+        } else if(isQuota){
           /* Mark this key as quota-hit and rotate */
           markQuota(apiKey);
           keyExhausted  = true;
@@ -5504,11 +5501,16 @@ async function prelimGenerate(){
   function typeLabel(t, isFil){
     const map = {
       tf:            isFil ? 'Tama o Mali'            : 'True or False',
+      smile_sad:     isFil ? 'Ngiti o Lungkot'        : 'Smile or Sad',
+      check_x:       isFil ? 'Tsek o Ekis'            : 'Check or X',
+      heart_thunder: isFil ? 'Puso o Kidlat'          : 'Heart or Thunder',
       mc:            isFil ? 'Multiple Choice (A-D)'  : 'Multiple Choice (A-D)',
       identification:isFil ? 'Pagkilala (Identification)' : 'Identification',
       matching:      isFil ? 'Pagtatambal (Matching)' : 'Matching Type',
       wb:            isFil ? 'Word Bank / Punan ang Patlang' : 'Word Bank / Fill-in-the-Blank',
       enumeration:   isFil ? 'Enumeration'            : 'Enumeration',
+      sequencing:    isFil ? 'Pagsusunod-sunod'       : 'Sequencing',
+      odd_one_out:   isFil ? 'Alin ang Naiiba'        : 'Odd One Out',
       essay:         isFil ? 'Sanaysay (Essay)'       : 'Essay',
     };
     return map[t] || t;
@@ -5518,21 +5520,31 @@ async function prelimGenerate(){
   function typeInstruction(t, count, partNum, isFil){
     const p = `Part ${['I','II','III'][partNum-1]}`;
     const en = {
-      tf:            `${p}: exactly ${count} True/False questions. Each item: {"q":"...","answer":true or false}. CRITICAL: roughly half the items must be TRUE and half FALSE — NEVER make all answers the same. Each "answer" must be the FACTUALLY correct boolean for that statement based ONLY on the reference content. Verify each one against the source before answering. Write some statements that are obviously true (faithful to the lesson) and some that contain a subtle factual error so the answer is false.`,
+      tf:            `${p}: exactly ${count} True/False questions. Each item: {"q":"...","answer":true or false}. Vary T/F answers (not all true or all false).`,
+      smile_sad:     `${p}: exactly ${count} True/False-style statements, same schema as True/False. Each item: {"q":"...","answer":true or false}. Pupils will draw a SMILE if true or a SAD face if false — do not mention smile/sad in the question text itself. Vary true/false answers.`,
+      check_x:       `${p}: exactly ${count} True/False-style statements, same schema as True/False. Each item: {"q":"...","answer":true or false}. Pupils will draw a CHECK if true or an X if false — do not mention check/X in the question text itself. Vary true/false answers.`,
+      heart_thunder: `${p}: exactly ${count} True/False-style statements, same schema as True/False. Each item: {"q":"...","answer":true or false}. Pupils will draw a HEART if true or a THUNDER BOLT if false — do not mention heart/thunder in the question text itself. Vary true/false answers.`,
       mc:            `${p}: exactly ${count} Multiple Choice questions with 4 options each. Each item: {"q":"...","options":["A text","B text","C text","D text"],"answer":"exact correct option text"}. No lazy distractors (All of the above, None of the above, etc).`,
       identification:`${p}: exactly ${count} Identification items — fill-in-the-blank with a single word/phrase answer. Each item: {"q":"___________ is the term for...","answer":"CorrectTerm"}`,
       matching:      `${p}: exactly ${count} Matching Type pairs. Column A = term/question, Column B = answer/definition. Each item: {"q":"Column A term or question","columnB":"Column B answer","answer":"Column B answer"}.`,
       wb:            `${p}: exactly ${count} Fill-in-the-Blank sentences. Include a "wordBank" array with the correct answers PLUS 2-3 distractor words. Each item: {"q":"The ________ ...","answer":"word"}. wordBank field goes at part level.`,
       enumeration:   `${p}: exactly ${count} Enumeration items — each asks pupils to list things. Each item: {"q":"Name 3 examples of...","answer":"item1, item2, item3"}`,
+      sequencing:    `${p}: exactly ${count} Sequencing items. Each item: {"q":"instruction telling pupils to arrange the events/steps in correct order","items":["scrambled step A","scrambled step B","scrambled step C","scrambled step D"],"answer":"correct order as numbers referencing the scrambled list, e.g. 3, 1, 4, 2"}. Each "items" array must have 4-5 entries listed OUT OF ORDER.`,
+      odd_one_out:   `${p}: exactly ${count} Odd One Out items. Each item: {"q":"instruction asking pupils to pick the item that does not belong","options":["choice A","choice B","choice C","choice D"],"answer":"exact text of the option that does not belong","explanation":"one short sentence why"}. Exactly 4 options, 3 of which share something in common. CRITICAL: "answer" must EXACTLY match one of the "options" strings character-for-character.`,
       essay:         `${p}: exactly ${count} Essay questions (short answer, 1-3 sentences). Each item: {"q":"Why is...?","answer":"Model answer..."}`,
     };
     const fil = {
-      tf:            `${p}: eksaktong ${count} na tanong na Tama o Mali. Bawat aytem: {"q":"...","answer":true o false}. MAHIGPIT: humigit-kumulang kalahati ang TAMA at kalahati ang MALI — HUWAG gawing pare-pareho ang lahat ng sagot. Ang "answer" ay dapat ang TOTOONG tamang boolean para sa pangungusap ayon LAMANG sa sangguniang teksto. Suriin ang bawat isa bago sagutan. Gumawa ng ilang pahayag na malinaw na TAMA (tapat sa aralin) at ilan na may maliit na maling impormasyon kaya MALI ang sagot.`,
+      tf:            `${p}: eksaktong ${count} na tanong na Tama o Mali. Bawat aytem: {"q":"...","answer":true o false}. Magpalit-palit ang T at F (huwag lahat ay tama o lahat ay mali).`,
+      smile_sad:     `${p}: eksaktong ${count} na pahayag na tulad ng Tama o Mali, parehong schema. Bawat aytem: {"q":"...","answer":true o false}. Iiguhit ng mag-aaral ang NGITI kung tama o LUNGKOT na mukha kung mali — huwag banggitin ang ngiti/lungkot sa tanong mismo. Magpalit-palit ang sagot.`,
+      check_x:       `${p}: eksaktong ${count} na pahayag na tulad ng Tama o Mali, parehong schema. Bawat aytem: {"q":"...","answer":true o false}. Iiguhit ng mag-aaral ang TSEK kung tama o EKIS kung mali — huwag banggitin ang tsek/ekis sa tanong mismo. Magpalit-palit ang sagot.`,
+      heart_thunder: `${p}: eksaktong ${count} na pahayag na tulad ng Tama o Mali, parehong schema. Bawat aytem: {"q":"...","answer":true o false}. Iiguhit ng mag-aaral ang PUSO kung tama o KIDLAT kung mali — huwag banggitin ang puso/kidlat sa tanong mismo. Magpalit-palit ang sagot.`,
       mc:            `${p}: eksaktong ${count} Multiple Choice na may 4 pagpipilian. Bawat aytem: {"q":"...","options":["A text","B text","C text","D text"],"answer":"eksaktong tamang opsyon"}. Iwasan ang mga lazy distractor.`,
       identification:`${p}: eksaktong ${count} na Identification. Patlang na may isang salita/parirala ang sagot. Bawat aytem: {"q":"Si ___________ ay...","answer":"TamangSalita"}`,
       matching:      `${p}: eksaktong ${count} na Matching Type. Hanay A = termino/tanong, Hanay B = sagot/kahulugan. Bawat aytem: {"q":"Hanay A na tanong","columnB":"Hanay B na sagot","answer":"Hanay B na sagot"}.`,
       wb:            `${p}: eksaktong ${count} na Fill-in-the-Blank na pangungusap. Maglakip ng "wordBank" array na may tamang mga sagot KASAMA ang 2-3 panlitong salita. Bawat aytem: {"q":"Ang __________ ay...","answer":"salita"}.`,
       enumeration:   `${p}: eksaktong ${count} na Enumeration. Ang bawat tanong ay nagtatanong na mag-lista ng mga bagay. Bawat aytem: {"q":"Mag-bigay ng 3 halimbawa ng...","answer":"bagay1, bagay2, bagay3"}`,
+      sequencing:    `${p}: eksaktong ${count} na Sequencing. Bawat aytem: {"q":"panuto na mag-ayos ng mga pangyayari/hakbang ayon sa tamang pagkakasunod-sunod","items":["nagulong hakbang A","nagulong hakbang B","nagulong hakbang C","nagulong hakbang D"],"answer":"tamang pagkakasunod-sunod bilang numero, hal. 3, 1, 4, 2"}. Dapat 4-5 ang laman ng "items" array at NAKAGULO ang pagkakasunod-sunod.`,
+      odd_one_out:   `${p}: eksaktong ${count} na Odd One Out. Bawat aytem: {"q":"panuto na piliin ang hindi kabilang sa pangkat","options":["pagpipilian A","pagpipilian B","pagpipilian C","pagpipilian D"],"answer":"eksaktong teksto ng hindi kabilang","explanation":"isang maikling pangungusap kung bakit"}. Eksaktong 4 na pagpipilian, 3 ay magkatulad. KRITIKAL: ang "answer" ay DAPAT EKSAKTONG TUMUGMA sa isa sa mga "options" letra-letra.`,
       essay:         `${p}: eksaktong ${count} na Essay na tanong (maikling sagot, 1-3 pangungusap). Bawat aytem: {"q":"Bakit mahalaga...?","answer":"Huwaran ng sagot..."}`,
     };
     return isFil ? fil[t] : en[t];
@@ -5607,9 +5619,11 @@ ${cogNoteEn}`;
 
   // ── Build dynamic JSON schema based on selected types ──
   function partJsonSchema(t, partKey){
-    if(t==='wb')      return `"${partKey}": {"story":"...","wordBank":["word1","word2"],"items":[{"q":"The __________ ...","answer":"word"}]}`;
-    if(t==='mc')      return `"${partKey}": {"story":"...","items":[{"q":"...","options":["A text","B text","C text","D text"],"answer":"A text"}]}`;
-    if(t==='matching')return `"${partKey}": {"story":"...","items":[{"q":"Column A","columnB":"Column B","answer":"Column B"}]}`;
+    if(t==='wb')         return `"${partKey}": {"story":"...","wordBank":["word1","word2"],"items":[{"q":"The __________ ...","answer":"word"}]}`;
+    if(t==='mc')         return `"${partKey}": {"story":"...","items":[{"q":"...","options":["A text","B text","C text","D text"],"answer":"A text"}]}`;
+    if(t==='matching')   return `"${partKey}": {"story":"...","items":[{"q":"Column A","columnB":"Column B","answer":"Column B"}]}`;
+    if(t==='sequencing') return `"${partKey}": {"story":"...","items":[{"q":"Arrange in correct order","items":["scrambled A","scrambled B","scrambled C","scrambled D"],"answer":"3, 1, 4, 2"}]}`;
+    if(t==='odd_one_out')return `"${partKey}": {"story":"...","items":[{"q":"Which one does not belong?","options":["choice A","choice B","choice C","choice D"],"answer":"choice C","explanation":"brief reason"}]}`;
     return `"${partKey}": {"story":"...","items":[{"q":"...","answer":"..."}]}`;
   }
 
@@ -5688,10 +5702,13 @@ ${activeSchema}
     /* Pad with placeholders if still short */
     while(part.items.length < wanted){
       const n = part.items.length + 1;
-      if(actualType==='tf')          part.items.push({ q:(isFil?'(Karagdagang tanong ':'(Additional question ')+n+')', answer:true });
+      if(actualType==='tf'||actualType==='smile_sad'||actualType==='check_x'||actualType==='heart_thunder')
+                                      part.items.push({ q:(isFil?'(Karagdagang tanong ':'(Additional question ')+n+')', answer:true });
       else if(actualType==='wb')     part.items.push({ q:(isFil?'Pangungusap ':'Sentence ')+n+': __________.', answer:'' });
       else if(actualType==='mc')     part.items.push({ q:(isFil?'Tanong ':'Question ')+n+'?', options:['A','B','C','D'], answer:'A' });
       else if(actualType==='matching')part.items.push({ q:(isFil?'Termino ':'Term ')+n, columnB:(isFil?'Kahulugan ':'Definition ')+n, answer:(isFil?'Kahulugan ':'Definition ')+n });
+      else if(actualType==='sequencing')part.items.push({ q:(isFil?'Ayusin nang tama ':'Arrange in correct order ')+n, items:['A','B','C','D'], answer:'1, 2, 3, 4' });
+      else if(actualType==='odd_one_out')part.items.push({ q:(isFil?'Alin ang hindi kabilang ':'Which does not belong ')+n+'?', options:['A','B','C','D'], answer:'D', explanation:'' });
       else                           part.items.push({ q:(isFil?'Tanong ':'Question ')+n+'.' });
     }
     if(part.items.length > wanted) part.items = part.items.slice(0, wanted);
@@ -5774,149 +5791,6 @@ ${activeSchema}
       }
     }
 
-    /* ── TF answer accuracy verification ──
-       The model sometimes returns all-true or all-false answer keys.
-       Re-ask the AI to evaluate each statement against the reference
-       content and return a clean array of booleans. We then overwrite
-       the original answers with the verified ones. The statements
-       themselves are NEVER changed. */
-    async function verifyTfAnswers(part){
-      if(!part || !Array.isArray(part.items) || !part.items.length) return part;
-      const statements = part.items.map((it,i) => `${i+1}. ${String(it.q||'').trim()}`).join('\n');
-      const prompt = isFil
-        ? `Ikaw ay isang gurong nagmamarka ng pagsusulit na Tama o Mali para sa ${grade} ${subject}.
-
-SANGGUNIANG NILALAMAN (ito lamang ang batayan ng katotohanan):
-${combinedContext}
-
-Suriin ang BAWAT pahayag sa ibaba. Kung ang pahayag ay TOTOO ayon sa sangguniang nilalaman, isulat ang true. Kung MALI o may maling impormasyon, isulat ang false. Huwag baguhin ang pahayag — sagutin lamang.
-
-MGA PAHAYAG:
-${statements}
-
-Sagutin LAMANG ng valid JSON sa anyong ito (eksaktong ${part.items.length} sagot, walang iba):
-{"answers":[true,false,true,...]}`
-        : `You are a teacher grading a True/False quiz for ${grade} ${subject}.
-
-REFERENCE CONTENT (the only source of truth):
-${combinedContext}
-
-Evaluate EACH statement below. If the statement is factually TRUE according to the reference content, return true. If it is FALSE or contains incorrect information, return false. Do NOT modify the statements — only judge them.
-
-STATEMENTS:
-${statements}
-
-Respond ONLY with valid JSON in this exact shape (exactly ${part.items.length} answers, nothing else):
-{"answers":[true,false,true,...]}`;
-      try{
-        const raw = await prelimCallAI(prompt, apiKey);
-        const parsed = prelimParseJson(raw) || {};
-        const ans = Array.isArray(parsed.answers) ? parsed.answers : (Array.isArray(parsed.result) ? parsed.result : null);
-        if(ans && ans.length === part.items.length){
-          part.items.forEach((it,i) => {
-            const v = ans[i];
-            if(typeof v === 'boolean')         it.answer = v;
-            else if(v === 'true' || v === 'T') it.answer = true;
-            else if(v === 'false'|| v === 'F') it.answer = false;
-          });
-        }
-      }catch(_){ /* keep original answers on failure */ }
-      // Last-ditch balance guard: if still all-same, flip a deterministic minority
-      const trues  = part.items.filter(it => it.answer === true  || it.answer === 'true').length;
-      const falses = part.items.filter(it => it.answer === false || it.answer === 'false').length;
-      if(part.items.length >= 4 && (trues === 0 || falses === 0)){
-        // We cannot invent truth — but never deliver an all-same key.
-        // Flip every other item starting at index 1 so the teacher
-        // immediately notices and reviews; the items are still intact.
-        part.items.forEach((it,i) => { if(i % 2 === 1) it.answer = !it.answer; });
-      }
-      return part;
-    }
-
-    /* ── Word Bank: enforce one unique answer per item ──
-       Detects duplicate answers across items and asks the AI to
-       rewrite the offending items using a different vocabulary
-       word from the lesson, so every item has a distinct answer. */
-    async function dedupeWbAnswers(part){
-      if(!part || !Array.isArray(part.items) || part.items.length < 2) return part;
-      const seen = new Map(); // lower -> first index
-      const dupIdx = [];
-      part.items.forEach((it,i) => {
-        const a = String(it.answer||'').trim().toLowerCase();
-        if(!a){ dupIdx.push(i); return; }
-        if(seen.has(a)) dupIdx.push(i);
-        else seen.set(a, i);
-      });
-      if(!dupIdx.length) return part;
-
-      const usedWords = Array.from(seen.keys());
-      const dupList = dupIdx.map(i => `${i+1}. ${String(part.items[i].q||'').trim()}  (kasalukuyang sagot: "${part.items[i].answer||''}")`).join('\n');
-      const prompt = isFil
-        ? `Ikaw ay isang guro. Sa pagsusulit na Word Bank/Punan ang Patlang, BAWAL ang paulit-ulit na sagot — bawat aytem ay dapat may KAKAIBANG sagot.
-
-SANGGUNIANG NILALAMAN:
-${combinedContext}
-
-Nagamit na ang mga salitang ito sa ibang aytem (HUWAG na ulitin): ${usedWords.join(', ') || '(wala pa)'}
-
-Para sa BAWAT aytem sa ibaba, palitan ang aytem ng bago — parehong konsepto at antas, ngunit may IBANG tamang sagot na nagmula sa sangguniang nilalaman at HINDI pa nababanggit sa listahan sa itaas at HINDI pa nagagamit sa ibang sagot dito.
-
-MGA AYTEM NA PINAPALITAN:
-${dupList}
-
-Sagutin LAMANG ng valid JSON (eksaktong ${dupIdx.length} aytem, magkakasunod ayon sa pagkakasunod sa itaas):
-{"items":[{"q":"Ang __________ ay ...","answer":"salita"}]}`
-        : `You are a teacher. In a Word Bank / Fill-in-the-Blank quiz, answers must NEVER repeat — every item must have a UNIQUE answer.
-
-REFERENCE CONTENT:
-${combinedContext}
-
-These words are already used as answers in other items (do NOT reuse): ${usedWords.join(', ') || '(none yet)'}
-
-For EACH item below, replace it with a new item on the same concept and level but with a DIFFERENT correct answer that comes from the reference content, is NOT in the used-list above, and is NOT reused across the replacements.
-
-ITEMS TO REPLACE:
-${dupList}
-
-Respond ONLY with valid JSON (exactly ${dupIdx.length} items, in the same order as listed above):
-{"items":[{"q":"The __________ is ...","answer":"word"}]}`;
-      try{
-        const raw = await prelimCallAI(prompt, apiKey);
-        const parsed = prelimParseJson(raw) || {};
-        const newItems = Array.isArray(parsed.items) ? parsed.items
-                       : Array.isArray(parsed.result?.items) ? parsed.result.items : [];
-        const usedLow = new Set(usedWords);
-        dupIdx.forEach((idx, k) => {
-          const ni = newItems[k];
-          if(!ni) return;
-          const ans = String(ni.answer||'').trim();
-          const low = ans.toLowerCase();
-          if(!ans || usedLow.has(low)) return; // skip if AI still collided
-          part.items[idx] = { q: String(ni.q||part.items[idx].q), answer: ans };
-          usedLow.add(low);
-        });
-      }catch(_){ /* keep originals on failure */ }
-      return part;
-    }
-
-    /* Run TF verification on every active TF part */
-    for(const p of activeParts){
-      if(p.type === 'tf'){
-        if(p.key==='part1' && part1) part1 = await verifyTfAnswers(part1);
-        if(p.key==='part2' && part2) part2 = await verifyTfAnswers(part2);
-        if(p.key==='part3' && part3) part3 = await verifyTfAnswers(part3);
-      }
-    }
-
-    /* Dedupe WB answers, then rebuild the bank from the cleaned items */
-    for(const p of activeParts){
-      if(p.type === 'wb'){
-        if(p.key==='part1' && part1){ part1 = await dedupeWbAnswers(part1); part1 = fixWbWordBank(part1); part1 = verifyWbAnswerKey(part1); }
-        if(p.key==='part2' && part2){ part2 = await dedupeWbAnswers(part2); part2 = fixWbWordBank(part2); part2 = verifyWbAnswerKey(part2); }
-        if(p.key==='part3' && part3){ part3 = await dedupeWbAnswers(part3); part3 = fixWbWordBank(part3); part3 = verifyWbAnswerKey(part3); }
-      }
-    }
-
     /* Parts not in activeParts remain null — preview/docx will skip them */
 
     gfill.style.width = '100%';
@@ -5954,6 +5828,22 @@ async function prelimCallAI(prompt, apiKey, _retryDepth){
 
   const handleQuotaAndRetry = async (errMsg, status) => {
     const m = (errMsg||'').toLowerCase();
+
+    /* ── Transient server overload (503 / 529 / 500 + "high demand") ──
+       Do NOT mark key as quota-hit. Wait with exponential backoff, retry same key. */
+    const isOverload = status === 503 || status === 529
+      || (status === 500 && (m.includes('high demand') || m.includes('overloaded') || m.includes('try again')))
+      || m.includes('high demand') || m.includes('spikes in demand')
+      || m.includes('overloaded') || m.includes('service unavailable')
+      || m.includes('temporarily unavailable') || m.includes('server error');
+    if(isOverload && _retryDepth < 5){
+      const wait = Math.min(1500 * Math.pow(2, _retryDepth), 20000); // 1.5s → 3s → 6s → 12s → 20s
+      console.warn(`[Prelim] Server overloaded (HTTP ${status}). Retrying in ${wait}ms… (attempt ${_retryDepth+1})`);
+      await new Promise(r => setTimeout(r, wait));
+      return prelimCallAI(prompt, apiKey, _retryDepth + 1);
+    }
+
+    /* ── True quota / rate-limit ── rotate key */
     const isQuota = status === 429 || status === 402
       || m.includes('quota') || m.includes('rate limit') || m.includes('rate_limit')
       || m.includes('insufficient_quota') || m.includes('resource_exhausted')
@@ -6027,10 +5917,11 @@ async function prelimCallAI(prompt, apiKey, _retryDepth){
       catch(_){ throw new Error('Unexpected Gemini response'); }
     }
   } catch(err){
-    // Network/transient errors: rotate on quota-ish messages, otherwise rethrow.
+    // Network/transient errors: retry on quota-ish AND overload/server-busy messages
     const msg = err && err.message ? err.message : String(err);
-    if(_retryDepth < 3 && /quota|rate.?limit|429|exhaust/i.test(msg)){
-      return handleQuotaAndRetry(msg, 429);
+    const isTransient = /quota|rate.?limit|429|exhaust|overload|high.demand|503|529|service.unavail|try.again|temporarily/i.test(msg);
+    if(_retryDepth < 5 && isTransient){
+      return handleQuotaAndRetry(msg, /503|529|overload|high.demand|service.unavail|temporarily|try.again/i.test(msg) ? 503 : 429);
     }
     throw err;
   }
@@ -6045,11 +5936,16 @@ function prelimRenderPreview(){
   function typeLabel(t, isFil){
     const map = {
       tf:            isFil ? 'Tama o Mali'                    : 'True or False',
+      smile_sad:     isFil ? 'Ngiti o Lungkot'                : 'Smile or Sad',
+      check_x:       isFil ? 'Tsek o Ekis'                    : 'Check or X',
+      heart_thunder: isFil ? 'Puso o Kidlat'                  : 'Heart or Thunder',
       mc:            isFil ? 'Multiple Choice (A-D)'           : 'Multiple Choice (A-D)',
       identification:isFil ? 'Pagkilala (Identification)'      : 'Identification',
       matching:      isFil ? 'Pagtatambal (Matching)'          : 'Matching Type',
       wb:            isFil ? 'Word Bank / Punan ang Patlang'   : 'Word Bank / Fill-in-the-Blank',
       enumeration:   isFil ? 'Enumeration'                     : 'Enumeration',
+      sequencing:    isFil ? 'Pagsusunod-sunod'                : 'Sequencing',
+      odd_one_out:   isFil ? 'Alin ang Naiiba'                 : 'Odd One Out',
       essay:         isFil ? 'Sanaysay (Essay)'                : 'Essay',
     };
     return map[t] || t;
@@ -6063,41 +5959,16 @@ function prelimRenderPreview(){
     const storyLine = story ? (isFil ? `Kwento: <em>${esc(story)}</em><br>` : `Story: <em>${esc(story)}</em><br>`) : '';
     const instrMap = {
       tf:            isFil ? 'Sumulat ng <strong>T</strong> kung tama at <strong>M</strong> kung mali.' : 'Write <strong>T</strong> if the statement is correct and <strong>F</strong> if it is wrong.',
+      smile_sad:     isFil ? 'Iguhit ang <strong style="color:#2E7D32;">☺ Ngiti</strong> kung tama at <strong style="color:#C62828;">☹ Lungkot</strong> kung mali.' : 'Draw a <strong style="color:#2E7D32;">☺ Smile</strong> if the statement is TRUE and a <strong style="color:#C62828;">☹ Sad face</strong> if it is FALSE.',
+      check_x:       isFil ? 'Iguhit ang <strong style="color:#1565C0;">✓ Tsek</strong> kung tama at <strong style="color:#C62828;">✗ Ekis</strong> kung mali.' : 'Draw a <strong style="color:#1565C0;">✓ Check</strong> if the statement is TRUE and an <strong style="color:#C62828;">✗ X</strong> if it is FALSE.',
+      heart_thunder: isFil ? 'Iguhit ang <strong style="color:#AD1457;">♥ Puso</strong> kung tama at <strong style="color:#6A1B9A;">⚡ Kidlat</strong> kung mali.' : 'Draw a <strong style="color:#AD1457;">♥ Heart</strong> if the statement is TRUE and a <strong style="color:#6A1B9A;">⚡ Thunder bolt</strong> if it is FALSE.',
       mc:            isFil ? 'Piliin ang tamang sagot. Isulat ang titik ng tamang sagot.' : 'Choose the correct answer. Write the letter of your answer on the blank.',
       identification:isFil ? 'Sagutin ang bawat tanong ng tamang salita o parirala.' : 'Write the correct word or phrase to complete each statement.',
       matching:      isFil ? 'Itambal ang Hanay A sa Hanay B. Isulat ang titik ng tamang sagot sa patlang.' : 'Match Column A with Column B. Write the letter of the correct answer on the blank.',
       wb:            isFil ? 'Gamitin ang mga salita sa <strong>Word Bank</strong> para sagutan ang mga patlang.' : 'Use the words in the <strong>Word Bank</strong> to fill in the blanks.',
       enumeration:   isFil ? 'Ilista ang hinihiling sa bawat aytem.' : 'List the items being asked in each number.',
-      essay:         isFil ? 'Sagutin sa 1-3 pangungusap.' : 'Answer in 1-3 sentences.',
-    };
-    return storyLine + (instrMap[t] || '');
-  }
-
-  /* Dynamic label helper */
-  function typeLabel(t, isFil){
-    const map = {
-      tf:            isFil ? 'Tama o Mali'                    : 'True or False',
-      mc:            isFil ? 'Multiple Choice (A-D)'           : 'Multiple Choice (A-D)',
-      identification:isFil ? 'Pagkilala (Identification)'      : 'Identification',
-      matching:      isFil ? 'Pagtatambal (Matching)'          : 'Matching Type',
-      wb:            isFil ? 'Word Bank / Punan ang Patlang'   : 'Word Bank / Fill-in-the-Blank',
-      enumeration:   isFil ? 'Enumeration'                     : 'Enumeration',
-      essay:         isFil ? 'Sanaysay (Essay)'                : 'Essay',
-    };
-    return map[t] || t;
-  }
-
-  function partInstr(t, part, isFil){
-    if(!part) return '';
-    const story = part.story || '';
-    const storyLine = story ? (isFil ? `Kwento: <em>${esc(story)}</em><br>` : `Story: <em>${esc(story)}</em><br>`) : '';
-    const instrMap = {
-      tf:            isFil ? 'Sumulat ng <strong>T</strong> kung tama at <strong>M</strong> kung mali.' : 'Write <strong>T</strong> if the statement is correct and <strong>F</strong> if it is wrong.',
-      mc:            isFil ? 'Piliin ang tamang sagot. Isulat ang titik ng tamang sagot.' : 'Choose the correct answer. Write the letter of your answer on the blank.',
-      identification:isFil ? 'Sagutin ang bawat tanong ng tamang salita o parirala.' : 'Write the correct word or phrase to complete each statement.',
-      matching:      isFil ? 'Itambal ang Hanay A sa Hanay B. Isulat ang titik ng tamang sagot sa patlang.' : 'Match Column A with Column B. Write the letter of the correct answer on the blank.',
-      wb:            isFil ? 'Gamitin ang mga salita sa <strong>Word Bank</strong> para sagutan ang mga patlang.' : 'Use the words in the <strong>Word Bank</strong> to fill in the blanks.',
-      enumeration:   isFil ? 'Ilista ang hinihiling sa bawat aytem.' : 'List the items being asked in each number.',
+      sequencing:    isFil ? 'Isulat ang tamang pagkakasunod-sunod (1, 2, 3...) sa kahon bago ang bawat aytem.' : 'Write the correct order number in the box before each item.',
+      odd_one_out:   isFil ? 'Piliin ang salita o bagay na hindi kabilang sa pangkat.' : 'Choose the word or item that does not belong in the group.',
       essay:         isFil ? 'Sagutin sa 1-3 pangungusap.' : 'Answer in 1-3 sentences.',
     };
     return storyLine + (instrMap[t] || '');
@@ -6107,6 +5978,10 @@ function prelimRenderPreview(){
     if(!part || !Array.isArray(part.items)) return '';
     const items = part.items;
     if(t==='tf') return items.map((it,i)=>`<div style="margin:2px 0;">_____ ${i+1}. ${esc(it.q)}</div>`).join('');
+    if(t==='smile_sad'||t==='check_x'||t==='heart_thunder'){
+      const box = '<span style="display:inline-block;width:34px;height:18px;border:1.5px solid #888;border-radius:4px;"></span>';
+      return items.map((it,i)=>`<div style="margin:3px 0;display:flex;align-items:center;gap:8px;">${box}<span>${i+1}. ${esc(it.q)}</span></div>`).join('');
+    }
     if(t==='mc'){
       const L=['A','B','C','D'];
       return items.map((it,i)=>`
@@ -6138,6 +6013,25 @@ function prelimRenderPreview(){
     if(t==='enumeration') return items.map((it,i)=>`
         <div style="margin:4px 0;"><strong>${i+1}.</strong> ${esc(it.q)}<br>
         <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div></div>`).join('');
+    if(t==='sequencing') return items.map((it,i)=>`
+        <div style="margin:8px 0;">
+          <div style="font-weight:600;margin-bottom:4px;">${i+1}. ${esc(it.q)}</div>
+          ${(Array.isArray(it.items) ? it.items : []).map(s=>`
+            <div style="display:flex;align-items:center;gap:8px;margin:3px 0 3px 10px;">
+              <span style="display:inline-block;width:32px;height:20px;border:1.5px solid #555;border-radius:3px;text-align:center;line-height:20px;font-size:10px;background:#f9f9f9;flex-shrink:0;">&nbsp;</span>
+              <span>${esc(s)}</span>
+            </div>`).join('')}
+        </div>`).join('');
+    if(t==='odd_one_out') return items.map((it,i)=>`
+        <div style="margin:8px 0;">
+          <div style="font-weight:600;margin-bottom:4px;">${i+1}. ${esc(it.q)}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;margin-left:10px;">
+            ${(Array.isArray(it.options) ? it.options : []).map((o,oi)=>`
+              <div style="padding:4px 8px;border:1.5px solid #00897B;border-radius:5px;font-size:12px;">
+                ${String.fromCharCode(65+oi)}. ${esc(o)}
+              </div>`).join('')}
+          </div>
+        </div>`).join('');
     return items.map((it,i)=>`<div style="margin:2px 0;">${i+1}. ${esc(it.q)}</div>`).join('');
   }
 
@@ -6224,7 +6118,12 @@ function prelimRenderPreview(){
     const items = (part.items||[]).map((it,i) => {
       let ans = '';
       if(type==='tf') ans = (it.answer===true||it.answer==='true') ? (isFil?'T (Tama)':'T (True)') : (isFil?'M (Mali)':'F (False)');
+      else if(type==='smile_sad') ans = (it.answer===true||it.answer==='true') ? '<span style="color:#2E7D32;font-weight:700;">☺ '+(isFil?'Ngiti':'Smile')+'</span>' : '<span style="color:#C62828;font-weight:700;">☹ '+(isFil?'Lungkot':'Sad')+'</span>';
+      else if(type==='check_x') ans = (it.answer===true||it.answer==='true') ? '<span style="color:#1565C0;font-weight:700;">✓ '+(isFil?'Tsek':'Check')+'</span>' : '<span style="color:#C62828;font-weight:700;">✗ '+(isFil?'Ekis':'X')+'</span>';
+      else if(type==='heart_thunder') ans = (it.answer===true||it.answer==='true') ? '<span style="color:#AD1457;font-weight:700;">♥ '+(isFil?'Puso':'Heart')+'</span>' : '<span style="color:#6A1B9A;font-weight:700;">⚡ '+(isFil?'Kidlat':'Thunder')+'</span>';
       else if(type==='essay'||type==='enumeration') ans = `<em>${esc(it.answer||'(open-ended)')}</em>`;
+      else if(type==='sequencing') ans = `<strong>${esc(String(it.answer||'—'))}</strong> <span style="color:#555;font-style:italic;">(${isFil?'tamang pagkakasunod-sunod':'correct order'})</span>`;
+      else if(type==='odd_one_out') ans = `${esc(String(it.answer||'—'))}${it.explanation ? ` — <em style="color:#555">${esc(it.explanation)}</em>` : ''}`;
       else ans = esc(String(it.answer||'—'));
       return `<div><strong>${i+1}.</strong> ${ans}</div>`;
     }).join('');
@@ -6296,11 +6195,16 @@ async function prelimDownload(){
   function typeLabel(t, isFil){
     const map = {
       tf:            isFil ? 'Tama o Mali'                    : 'True or False',
+      smile_sad:     isFil ? 'Ngiti o Lungkot'                : 'Smile or Sad',
+      check_x:       isFil ? 'Tsek o Ekis'                    : 'Check or X',
+      heart_thunder: isFil ? 'Puso o Kidlat'                  : 'Heart or Thunder',
       mc:            isFil ? 'Multiple Choice (A-D)'           : 'Multiple Choice (A-D)',
       identification:isFil ? 'Pagkilala (Identification)'      : 'Identification',
       matching:      isFil ? 'Pagtatambal (Matching)'          : 'Matching Type',
       wb:            isFil ? 'Word Bank / Punan ang Patlang'   : 'Word Bank / Fill-in-the-Blank',
       enumeration:   isFil ? 'Enumeration'                     : 'Enumeration',
+      sequencing:    isFil ? 'Pagsusunod-sunod'                : 'Sequencing',
+      odd_one_out:   isFil ? 'Alin ang Naiiba'                 : 'Odd One Out',
       essay:         isFil ? 'Sanaysay (Essay)'                : 'Essay',
     };
     return map[t] || t;
@@ -6336,11 +6240,16 @@ async function prelimDownload(){
   function typeInstrDocx(t, isFil){
     const map = {
       tf:            isFil ? 'Sumulat ng T kung tama at M kung mali.' : 'Write T if the statement is correct and F if it is wrong.',
+      smile_sad:     isFil ? 'Iguhit ang ☺ Ngiti kung tama at ☹ Lungkot kung mali.' : 'Draw a ☺ Smile if the statement is TRUE and a ☹ Sad face if it is FALSE.',
+      check_x:       isFil ? 'Iguhit ang ✓ Tsek kung tama at ✗ Ekis kung mali.' : 'Draw a ✓ Check if the statement is TRUE and an ✗ X if it is FALSE.',
+      heart_thunder: isFil ? 'Iguhit ang ♥ Puso kung tama at ⚡ Kidlat kung mali.' : 'Draw a ♥ Heart if the statement is TRUE and a ⚡ Thunder bolt if it is FALSE.',
       mc:            isFil ? 'Piliin ang tamang sagot. Isulat ang titik ng iyong sagot sa patlang.' : 'Choose the best answer. Write the letter of your answer on the blank.',
       identification:isFil ? 'Sagutin ang bawat tanong ng tamang salita o parirala. Isulat sa patlang.' : 'Write the correct word or phrase on the blank to complete each statement.',
       matching:      isFil ? 'Itambal ang Hanay A sa Hanay B. Isulat ang titik ng tamang sagot sa patlang.' : 'Match Column A with Column B. Write the letter of the correct answer on the blank.',
       wb:            isFil ? 'Gamitin ang mga salita sa Word Bank para sagutan ang mga patlang. Isulat ang tamang salita sa patlang.' : 'Use the words in the Word Bank to fill in the blanks. Write the correct word on the line.',
       enumeration:   isFil ? 'Ilista ang hinihiling sa bawat aytem.' : 'List the items being asked in each number.',
+      sequencing:    isFil ? 'Isulat ang tamang numero ng pagkakasunod-sunod sa kahon bago ang bawat aytem.' : 'Write the correct order number in the box before each item.',
+      odd_one_out:   isFil ? 'Piliin at bilugan ang salita o bagay na hindi kabilang sa pangkat.' : 'Circle the word or item that does not belong in the group.',
       essay:         isFil ? 'Sagutin sa 1-3 pangungusap.' : 'Answer in 1-3 complete sentences.',
     };
     return map[t] || '';
@@ -6367,9 +6276,10 @@ async function prelimDownload(){
         new TextRun({ text: story, italics:true, size:22, font:iFont }),
       ], 20, 20));
     }
+    const icDocxColors = { smile_sad:'2E7D32', check_x:'1565C0', heart_thunder:'AD1457' };
     paras.push(bodyPar([
       new TextRun({ text: '👉 ', size:22, font:iFont }),
-      new TextRun({ text: instrTxt, size:22, font:iFont }),
+      new TextRun({ text: instrTxt, size:22, font:iFont, bold: !!icDocxColors[t], color: icDocxColors[t] || undefined }),
     ], 20, 60));
 
     if(t==='wb' && part.wordBank && part.wordBank.length){
@@ -6383,6 +6293,15 @@ async function prelimDownload(){
         paras.push(new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
           children:[
             new TextRun({ text:'_____  ', size:22, font:iFont }),
+            new TextRun({ text: it.q, size:22, font:iFont }),
+          ]}));
+      });
+    } else if(t==='smile_sad'||t==='check_x'||t==='heart_thunder'){
+      const boxColor = icDocxColors[t];
+      items.forEach(it => {
+        paras.push(new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
+          children:[
+            new TextRun({ text:'[      ]   ', bold:true, color:boxColor, size:22, font:iFont }),
             new TextRun({ text: it.q, size:22, font:iFont }),
           ]}));
       });
@@ -6440,6 +6359,54 @@ async function prelimDownload(){
         answerLines(t==='enumeration'?3:6).forEach(l => paras.push(l));
         paras.push(new Paragraph({ spacing:{before:0,after:0}, children:[new TextRun({ text:'.', size:22, font:iFont })] }));
       });
+    } else if(t==='sequencing'){
+      /* Each item: instruction then each scrambled step with [ ___ ] blank box */
+      items.forEach((it,i) => {
+        paras.push(new Paragraph({ spacing:{before:50,after:16},
+          children:[
+            new TextRun({ text:`${i+1}. `, bold:true, size:22, font:iFont }),
+            new TextRun({ text: it.q || (isFil?'Ayusin ang mga sumusunod nang tama.':'Arrange the following in correct order.'), size:22, font:iFont }),
+          ]}));
+        const seqItems = Array.isArray(it.items) ? it.items : [];
+        seqItems.forEach(s => {
+          paras.push(new Paragraph({ spacing:{before:14,after:14}, indent:{left:CM(0.8)},
+            children:[
+              new TextRun({ text:'[     ]  ' + s, size:22, font:iFont }),
+            ]}));
+        });
+        paras.push(new Paragraph({ spacing:{before:6,after:6}, children:[new TextRun({ text:' ', size:18 })] }));
+      });
+    } else if(t==='odd_one_out'){
+      /* Each item: question + 2×2 table of options */
+      const ooBorder = { style: BorderStyle.SINGLE, size: 1, color: '00897B' };
+      const ooBorders = { top:ooBorder, bottom:ooBorder, left:ooBorder, right:ooBorder };
+      const ooW = 4320;
+      items.forEach((it,i) => {
+        paras.push(new Paragraph({ spacing:{before:50,after:16},
+          children:[
+            new TextRun({ text:`${i+1}. `, bold:true, size:22, font:iFont }),
+            new TextRun({ text: it.q || (isFil?'Alin ang hindi kabilang sa pangkat?':'Which one does not belong?'), size:22, font:iFont }),
+          ]}));
+        const opts = Array.isArray(it.options) ? it.options : [];
+        const letters = ['A','B','C','D'];
+        const rows = [];
+        for(let r=0; r<opts.length; r+=2){
+          const cells = [r, r+1].map(ci => {
+            const label = opts[ci] ? `${letters[ci]}. ${opts[ci]}` : '';
+            return new TableCell({
+              borders: ooBorders,
+              width:{ size:ooW, type:WidthType.DXA },
+              margins:{top:80,bottom:80,left:120,right:120},
+              children:[new Paragraph({ children:[new TextRun({ text:label, size:22, font:iFont })] })],
+            });
+          });
+          rows.push(new TableRow({ children: cells }));
+        }
+        if(rows.length){
+          paras.push(new Table({ width:{size:8640,type:WidthType.DXA}, columnWidths:[ooW,ooW], rows }));
+        }
+        paras.push(new Paragraph({ spacing:{before:10,after:10}, children:[new TextRun({ text:' ', size:18 })] }));
+      });
     } else {
       /* identification, wb, or fallback */
       items.forEach((it,i) => {
@@ -6456,12 +6423,29 @@ async function prelimDownload(){
   /* Answer key items by type */
   function buildAnsKeyDocx(t, part, isFil){
     if(!part || !(part.items||[]).length) return [];
+    const icAns = {
+      smile_sad:     { trueTxt: isFil?'☺ Ngiti':'☺ Smile', falseTxt: isFil?'☹ Lungkot':'☹ Sad',     trueColor:'2E7D32', falseColor:'C62828' },
+      check_x:       { trueTxt: isFil?'✓ Tsek':'✓ Check',   falseTxt: isFil?'✗ Ekis':'✗ X',           trueColor:'1565C0', falseColor:'C62828' },
+      heart_thunder: { trueTxt: isFil?'♥ Puso':'♥ Heart',   falseTxt: isFil?'⚡ Kidlat':'⚡ Thunder', trueColor:'AD1457', falseColor:'6A1B9A' },
+    };
     return (part.items||[]).map((it,i) => {
       let ans = '';
+      let ansColor = undefined;
       if(t==='tf') ans = (it.answer===true||it.answer==='true') ? 'T' : 'F';
+      else if(icAns[t]){
+        const isTrue = it.answer===true||it.answer==='true';
+        const def = icAns[t];
+        ans = isTrue ? def.trueTxt : def.falseTxt;
+        ansColor = isTrue ? def.trueColor : def.falseColor;
+      }
+      else if(t==='sequencing') ans = String(it.answer||'') + (isFil?' (tamang pagkakasunod-sunod)':' (correct order)');
+      else if(t==='odd_one_out') ans = String(it.answer||'') + (it.explanation ? ' — ' + it.explanation : '');
       else ans = String(it.answer||'');
       return new Paragraph({ spacing:{before:20,after:20}, indent:{left:CM(0.5)},
-        children:[new TextRun({ text:`${i+1}. ${ans}`, size:20, font:iFont })] });
+        children:[
+          new TextRun({ text:`${i+1}. `, size:20, font:iFont }),
+          new TextRun({ text: ans, size:20, font:iFont, bold: !!ansColor, color: ansColor }),
+        ] });
     });
   }
 
@@ -6822,123 +6806,40 @@ fbAuth.onAuthStateChanged(async (user) => {
   .audit-correct-row select{padding:3px 6px;border:1px solid var(--border,#DDE3ED);border-radius:4px;font-family:inherit;}
   .audit-summary{margin:8px 0;padding:8px 11px;border-radius:6px;background:#FFF8E1;border-left:3px solid var(--gold,#FFC000);font-size:12px;font-weight:600;color:#6D4C00;}
   .audit-summary.clean{background:#E8F5E9;border-left-color:#43A047;color:#1B5E20;}
-
-/* ============ ENHANCED LOADING / DISABLED STATES (appearance-only) ============ */
-/* Make every disabled primary action clearly read as "blocked or in-progress" */
-.btn:disabled,
-.bp:disabled,
-.bg:disabled,
-.br:disabled,
-.bo:disabled,
-.sm-search-btn:disabled,
-.auth-google-btn:disabled{
-  cursor:not-allowed !important;
-  opacity:.78 !important;
-  filter:saturate(.85);
-  position:relative;
-  overflow:hidden;
-  isolation:isolate;
-  /* diagonal "blocked" hatch — subtle, never obscures the label */
-  background-image:
-    repeating-linear-gradient(135deg,
-      rgba(255,255,255,0) 0 8px,
-      rgba(0,0,0,.055) 8px 9px),
-    var(--btn-bg, none);
-}
-/* Animated shimmer sweep — reads as "work in progress" the moment a button is disabled */
-.btn:disabled::after,
-.sm-search-btn:disabled::after,
-.auth-google-btn:disabled::after{
-  content:"";
-  position:absolute; inset:0;
-  background:linear-gradient(110deg,
-    transparent 0%,
-    transparent 35%,
-    rgba(255,255,255,.45) 50%,
-    transparent 65%,
-    transparent 100%);
-  background-size:220% 100%;
-  background-repeat:no-repeat;
-  animation:lvShimmer 1.4s linear infinite;
-  pointer-events:none;
-  z-index:1;
-  mix-blend-mode:overlay;
-}
-.btn:disabled > *,
-.sm-search-btn:disabled > *,
-.auth-google-btn:disabled > *{ position:relative; z-index:2; }
-
-@keyframes lvShimmer{
-  0%   { background-position: 120% 0; }
-  100% { background-position: -120% 0; }
-}
-
-/* Bottom progress bar — appears whenever a primary action is busy/disabled */
-.btn.bp:disabled::before,
-.btn.bg:disabled::before,
-.sm-search-btn:disabled::before,
-.auth-google-btn:disabled::before{
-  content:"";
-  position:absolute; left:0; right:0; bottom:0; height:2px;
-  background:linear-gradient(90deg,
-    rgba(255,255,255,.15) 0%,
-    rgba(255,255,255,.95) 50%,
-    rgba(255,255,255,.15) 100%);
-  background-size:40% 100%;
-  background-repeat:no-repeat;
-  animation:lvProgress 1.3s ease-in-out infinite;
-  z-index:3;
-  border-radius:0 0 6px 6px;
-}
-@keyframes lvProgress{
-  0%   { background-position: -50% 0; }
-  100% { background-position: 150% 0; }
-}
-
-/* Subtle resting "breathing" so a long-disabled primary call-to-action still feels alive */
-.btn.bp:disabled,
-.btn.bg:disabled,
-.sm-search-btn:disabled{
-  animation: lvBreathe 2.4s ease-in-out infinite;
-}
-@keyframes lvBreathe{
-  0%,100%{ box-shadow:0 1px 2px rgba(0,0,0,.08); }
-  50%    { box-shadow:0 3px 12px rgba(21,101,192,.25); }
-}
-
-/* The ⏳ hourglass in a disabled label gets its own gentle spin so it actually moves */
-.btn:disabled, .sm-search-btn:disabled{ letter-spacing:.01em; }
-@keyframes lvSpin{ to{ transform:rotate(360deg); } }
-
-/* Honor reduced-motion preferences */
-@media (prefers-reduced-motion: reduce){
-  .btn:disabled::after, .btn:disabled::before,
-  .sm-search-btn:disabled::after, .sm-search-btn:disabled::before,
-  .auth-google-btn:disabled::after, .auth-google-btn:disabled::before,
-  .btn.bp:disabled, .btn.bg:disabled, .sm-search-btn:disabled{
-    animation:none !important;
-  }
-}
-
-/* When a disabled button has a tooltip via title, lift it slightly on hover for discoverability */
-.btn:disabled[title]:hover{ filter:saturate(.95) brightness(1.02); }
- </style>
+</style>
 <script>
 /* ============ EXAM AUDIT ENGINE ============ */
 window.examAudit = function(item){
-  /* item: {question, options:[strings], answer:string}  -> {errors:[], warnings:[], soft:[]} */
+  /* item: {question, options:[strings], answer:string, items?:[strings]}
+     -> {errors:[], warnings:[], soft:[]} */
   const out = { errors:[], warnings:[], soft:[] };
   if(!item) return out;
-  const opts = Array.isArray(item.options) ? item.options.map(o => String(o ?? '')) : [];
+  const opts     = Array.isArray(item.options) ? item.options.map(o => String(o ?? '')) : [];
+  const seqItems = Array.isArray(item.items)   ? item.items.map(o => String(o ?? ''))   : [];
   const ans  = String(item.answer ?? '');
   const norm = (s) => String(s ?? '').replace(/^\s+|\s+$/g,'');
-  /* Verbatim mismatch — exact case-sensitive match after trim */
+
+  /* For odd_one_out / mc: answer must exactly match one option */
   if(opts.length){
     const match = opts.some(o => norm(o) === norm(ans));
     if(!match){
       out.errors.push('Error: The designated correct answer "'+norm(ans)+'" does not exactly match any of the provided options (case-sensitive).');
     }
   }
+
+  /* For sequencing: answer should be a numeric sequence referencing valid positions */
+  if(seqItems.length && !opts.length){
+    const parts = ans.split(',').map(s => s.trim());
+    const valid = parts.every(p => /^\d+$/.test(p) && +p >= 1 && +p <= seqItems.length);
+    if(!valid){
+      out.errors.push('Error: Sequencing answer "'+norm(ans)+'" contains invalid or out-of-range position numbers. Expected numbers 1–'+seqItems.length+' separated by commas.');
+    }
+    const unique = new Set(parts);
+    if(unique.size !== parts.length){
+      out.warnings.push('Warning: Sequencing answer has repeated position numbers — each scrambled item should appear exactly once.');
+    }
+  }
+
   /* Duplicate options */
   const seen = new Map();
   opts.forEach((o,i) => {
