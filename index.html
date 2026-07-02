@@ -986,14 +986,7 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
     </div>
 
     <!-- TOS Source selector -->
-    <!-- Optional reference files: AI reads them so MC questions draw from real content. Item COUNT & ORDER still come from the TOS. -->
-    <div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:8px;padding:12px 16px;margin-bottom:14px;">
-      <div style="font-size:12px;font-weight:800;color:#1B5E20;margin-bottom:4px;">📎 Reference Files (optional) — .docx, .doc, or .pdf</div>
-      <div style="font-size:11px;color:#2E7D32;margin-bottom:10px;">Upload lesson files and the AI will READ them and base the multiple-choice questions on their content. The number of items per topic and the order still follow the TOS exactly.</div>
-      <button class="btn bo bsm" onclick="document.getElementById('feRefInput').click()">⬆ Upload Files</button>
-      <input type="file" id="feRefInput" accept=".docx,.doc,.pdf" multiple style="display:none" onchange="feHandleFiles(this.files)">
-      <div id="feRefList" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
-    </div>
+    <!-- Reference content now comes from files uploaded per-topic in TOS Management above. Item COUNT & ORDER still come from the TOS. -->
     <div style="background:#EEF4FF;border:1px solid #BBDEFB;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
       <span style="font-size:12px;font-weight:800;color:#002060;">📊 TOS Source:</span>
       <select class="fc" id="feTOSSel" style="max-width:220px;font-size:12px;font-weight:700;" onchange="feOnTOSChange()" onfocus="fePopulateTOSSel()"></select>
@@ -3296,6 +3289,27 @@ const TOS_BANK_KEY = 'tos_lp_bank_v1';
 /* Cognitive level weights — matching the uploaded reference TOS:
    Remember/Knowledge 40%, Understand/Comprehend 30%, Apply 20%, Analyze+Evaluate+Create+Synthesize 10% */
 const TOS_COG_W = [0.40, 0.30, 0.20, 0.10];
+
+/* Single source of truth for splitting a lesson's item allocation across the 4
+   cognitive levels. Uses largest-remainder rounding so the 4 numbers always sum
+   EXACTLY to `alloc`. Used by the on-screen TOS table, the exported TOS .doc,
+   and the Final Exam generator — so the displayed TOS, the downloaded TOS, and
+   the actual generated exam always show the same item counts per topic/level. */
+function tosCogBreakdown(alloc){
+  alloc = Math.max(0, Math.round(alloc||0));
+  const raw  = TOS_COG_W.map(w => alloc * w);
+  const cogs = raw.map(v => Math.floor(v));
+  let remaining = alloc - cogs.reduce((a,b)=>a+b,0);
+  const order = raw
+    .map((v,i)=>({ i, rem: v - Math.floor(v) }))
+    .sort((a,b)=> b.rem - a.rem || TOS_COG_W[b.i] - TOS_COG_W[a.i]);
+  let k = 0;
+  while(remaining > 0 && order.length){
+    cogs[order[k % order.length].i]++;
+    remaining--; k++;
+  }
+  return cogs;
+}
 const TOS_COG_LABELS = [
   'Remember/\nKnowledge\n40%',
   'Understand/\nComprehend\n30%',
@@ -3313,7 +3327,7 @@ let tosInsertRow = 0;
 let tosSaveTimer = null;
 
 /* ─── FACTORIES ─── */
-function tosMkDataRow(){ return { topic:'', days:0 }; }
+function tosMkDataRow(){ return { topic:'', days:0, refText:'', refFileName:'' }; }
 function tosMkTOS(name){
   return {
     id: Date.now()+Math.random(),
@@ -3370,9 +3384,10 @@ function tosRecalc(){
     const allocEl = document.getElementById('tosAlloc'+i);
     if(pctEl)   pctEl.textContent   = pct.toFixed(1)+'%';
     if(allocEl) allocEl.textContent = alloc;
+    const rowCogs = tosCogBreakdown(alloc);
     TOS_COG_W.forEach((w,ci)=>{
       const cel = document.getElementById('tosCog'+i+'_'+ci);
-      if(cel) cel.textContent = Math.round(alloc*w);
+      if(cel) cel.textContent = rowCogs[ci];
     });
     const totEl = document.getElementById('tosRowTotal'+i);
     if(totEl) totEl.textContent = alloc;
@@ -3381,9 +3396,7 @@ function tosRecalc(){
   /* Totals row */
   const totDays  = totalDays;
   const totAlloc = allocs.reduce((s,a)=>s+a.alloc,0);
-  const cogTots  = TOS_COG_W.map(w=>Math.round(totAlloc*w));
-  const cogSum   = cogTots.reduce((a,b)=>a+b,0);
-  if(cogSum!==totAlloc && cogTots.length) cogTots[0]+=totAlloc-cogSum;
+  const cogTots  = tosCogBreakdown(totAlloc);
 
   document.getElementById('tosTblFoot').innerHTML = `<tr>
     <td style="text-align:center;font-weight:700;background:#F2F2F2;font-size:10pt;font-family:'Century Gothic',sans-serif;"></td>
@@ -3433,6 +3446,14 @@ function tosRenderTable(){
           placeholder="Learning competency…"
           oninput="tosSnapComp(${i})"
           style="font-family:'Century Gothic',sans-serif;font-size:10pt;min-width:120px;">
+        <div style="display:flex;align-items:center;gap:5px;margin-top:3px;">
+          <button type="button" onclick="document.getElementById('tosRefInput${i}').click()"
+            title="Upload lesson file for this topic so the exam reads it accurately"
+            style="font-size:9px;font-weight:800;color:#1565C0;background:#EEF4FF;border:1px solid #BBDEFB;border-radius:4px;padding:2px 6px;cursor:pointer;white-space:nowrap;">📎 ${row.refFileName?'Change':'Upload'}</button>
+          <input type="file" id="tosRefInput${i}" accept=".docx,.doc,.pdf" style="display:none" onchange="tosHandleRefFile(${i},this.files)">
+          ${row.refFileName ? `<span style="font-size:9px;color:#2E7D32;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;" title="${tosEsc(row.refFileName)}">${tosEsc(row.refFileName)}</span>
+          <button type="button" onclick="tosRemoveRefFile(${i})" title="Remove file" style="background:none;border:none;color:#C62828;font-size:11px;cursor:pointer;padding:0 2px;">✕</button>` : ''}
+        </div>
       </td>
       <td class="tos-cell-days" style="padding:3px;text-align:center;">
         <input id="tosDays${i}" type="number" min="0" step="0.5"
@@ -3458,6 +3479,31 @@ function tosSnapComp(i){
   const el=document.getElementById('tosComp'+i);
   if(el) tos.rows[i].competency=el.value;
   tosDebounceSave();
+}
+
+/* ── Per-topic reference file (AI reads this so Final Exam items for THIS topic are accurate) ── */
+async function tosHandleRefFile(i, fileList){
+  const file = fileList && fileList[0];
+  if(!file) return;
+  if(!/\.(docx|doc|pdf)$/i.test(file.name)){ toast('Please upload a .docx, .doc, or .pdf file.','te'); return; }
+  const tos = tosGet(); if(!tos) return;
+  toast('Reading '+file.name+'…','ts');
+  try{
+    const text = await prelimExtractDocx(file);
+    tos.rows[i].refText = text;
+    tos.rows[i].refFileName = file.name;
+    tosDebounceSave();
+    tosRenderTable();
+    toast('✅ '+file.name+' attached to this topic.','ts');
+  }catch(e){
+    toast('Could not read '+file.name+'. Try re-saving as .docx or PDF.','te');
+  }
+}
+function tosRemoveRefFile(i){
+  const tos=tosGet(); if(!tos) return;
+  tos.rows[i].refText=''; tos.rows[i].refFileName='';
+  tosDebounceSave();
+  tosRenderTable();
 }
 
 /* ─── ROW COUNT TOGGLE ─── */
@@ -3683,15 +3729,15 @@ async function tosDOCX(){
     const pct   = totalDays>0?(r.days||0)/totalDays*100:0;
     const alloc = totalDays>0?Math.round(pct/100*ti):0;
     return {topic:r.topic||'',competency:r.competency||'',days:r.days||0,pct,alloc,
-            cogs:TOS_COG_W.map(w=>Math.round(alloc*w))};
+            cogs:tosCogBreakdown(alloc)};
   });
   const aSum=allocs.reduce((s,a)=>s+a.alloc,0);
   if(aSum!==ti&&allocs.length&&totalDays>0){
     let mx=0; allocs.forEach((a,i)=>{if(a.alloc>allocs[mx].alloc)mx=i;});
     allocs[mx].alloc+=ti-aSum;
-    allocs[mx].cogs=TOS_COG_W.map(w=>Math.round(allocs[mx].alloc*w));
+    allocs[mx].cogs=tosCogBreakdown(allocs[mx].alloc);
   }
-  const cogHdrItems=TOS_COG_W.map(w=>Math.round(ti*w));
+  const cogHdrItems=tosCogBreakdown(ti);
 
   /* ── XML helpers ── */
   const X=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -3820,7 +3866,7 @@ async function tosDOCX(){
       <w:tr>
         ${(()=>{
           const totA=allocs.reduce((s,a)=>s+a.alloc,0);
-          const tC=TOS_COG_W.map(w=>Math.round(totA*w));
+          const tC=tosCogBreakdown(totA);
           const tCSum=tC.reduce((a,b)=>a+b,0);
           if(tCSum!==totA&&tC.length) tC[0]+=totA-tCSum;
           return `
@@ -4113,6 +4159,7 @@ async function feGenerate(){
       topic:      r.topic || ('Lesson ' + (i+1)),
       competency: r.competency || '',
       days:       r.days || 0,
+      refText:    r.refText || '',
       alloc
     };
   });
@@ -4142,19 +4189,12 @@ async function feGenerate(){
   const COG_DIFFICULTY = ['recall', 'comprehension', 'application', 'higher-order thinking (analysis, evaluation, or synthesis)'];
 
   // cogGrid[c][l] = item count for cog-level c, lesson l
-  const cogGrid = TOS_COG_W.map(w =>
-    lessonAllocs.map(a => Math.round(a.alloc * w))
-  );
-
-  // Fix rounding per lesson so each lesson's cog items sum to its alloc
+  // Uses the SAME tosCogBreakdown() as the TOS table/export, so the exam always
+  // generates exactly the counts shown in the TOS — no more mismatches.
+  const cogGrid = TOS_COG_W.map(() => []);
   lessonAllocs.forEach((a, li) => {
-    const cogSum = cogGrid.reduce((s, cRow) => s + cRow[li], 0);
-    if(cogSum !== a.alloc){
-      // Add/subtract from the biggest cog level for that lesson
-      let mxC = 0;
-      cogGrid.forEach((cRow, ci) => { if(cRow[li] > cogGrid[mxC][li]) mxC = ci; });
-      cogGrid[mxC][li] += a.alloc - cogSum;
-    }
+    const rowCogs = tosCogBreakdown(a.alloc);
+    rowCogs.forEach((count, ci) => { cogGrid[ci][li] = count; });
   });
 
   /* ── Step 3: Build generation tasks in cognitive-level-first order ──
@@ -4200,11 +4240,9 @@ async function feGenerate(){
   let globalNum = 1;
   let tasksDone = 0;
 
-  /* Optional reference text from uploaded files — questions draw from this content,
-     but item count & order still come from the TOS. */
-  const feRefContext = feBuildRefContext();
-
-  /* ── Step 5: Generate each task ── */
+  /* ── Step 5: Generate each task ──
+     Reference content is per-topic: each lesson row's own uploaded file (TOS Management)
+     is used ONLY for that topic's questions, so the AI reads the exact matching content. */
   for(const task of tasks){
     if(feGenAbort) break;
 
@@ -4216,11 +4254,13 @@ async function feGenerate(){
       ? `Learning Competency: "${task.lesson.competency}"`
       : `Topic/Lesson: "${task.lesson.topic}"`;
 
-    const refLineFil = feRefContext
-      ? `\nSANGGUNIANG NILALAMAN (ibatay ang mga tanong dito kung may kaugnayan sa aralin):\n"""\n${feRefContext}\n"""\n`
+    const topicRefText = (task.lesson.refText||'').slice(0, 12000);
+
+    const refLineFil = topicRefText
+      ? `\nSANGGUNIANG NILALAMAN PARA SA ARALING ITO (ibatay ANG TANONG dito):\n"""\n${topicRefText}\n"""\n`
       : '';
-    const refLineEn = feRefContext
-      ? `\nREFERENCE CONTENT (base the questions on this material when relevant to the lesson):\n"""\n${feRefContext}\n"""\n`
+    const refLineEn = topicRefText
+      ? `\nREFERENCE CONTENT FOR THIS SPECIFIC TOPIC (base the questions on this exact material):\n"""\n${topicRefText}\n"""\n`
       : '';
 
     const prompt = isFilipinoSubject
@@ -5390,36 +5430,7 @@ function prelimRemoveFile(i){
   prelimRenderFileList();
 }
 
-/* ── Final Exam reference files (read by AI; item count/order still from TOS) ── */
-let feRefFiles = [];   // [{name, text}]
-async function feHandleFiles(fileList){
-  const files = Array.from(fileList).filter(f => /\.(docx|doc|pdf)$/i.test(f.name));
-  if(!files.length){ toast('Please upload .docx, .doc, or .pdf files only.','te'); return; }
-  if(files.length + feRefFiles.length > 6){ toast('Maximum 6 reference files.','te'); return; }
-  for(const file of files){
-    const text = await prelimExtractDocx(file);   // reuse existing docx/pdf extractor
-    feRefFiles.push({ name:file.name, text });
-  }
-  document.getElementById('feRefInput').value='';
-  feRenderRefList();
-}
-function feRenderRefList(){
-  const list = document.getElementById('feRefList');
-  if(!list) return;
-  list.innerHTML = feRefFiles.map((f,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;background:#F1F8E9;border-radius:6px;padding:7px 10px;">
-      <span style="font-size:14px;">📄</span>
-      <span style="flex:1;font-size:12px;font-weight:600;color:#33691E;">${esc(f.name)}</span>
-      <span style="font-size:10px;color:#888;">${f.text.length} chars</span>
-      <button onclick="feRemoveRef(${i})" style="background:none;border:none;cursor:pointer;color:#C62828;font-size:14px;padding:0 4px;" title="Remove">✕</button>
-    </div>`).join('');
-}
-function feRemoveRef(i){ feRefFiles.splice(i,1); feRenderRefList(); }
-function feBuildRefContext(){
-  if(!feRefFiles.length) return '';
-  const combined = feRefFiles.map((f,i)=>`--- FILE ${i+1}: ${f.name} ---\n${f.text}`).join('\n\n').slice(0, 12000);
-  return combined;
-}
+/* ── Final Exam reference content now comes per-topic from files uploaded in TOS Management (row.refText). ── */
 
 /* ── Main generation ── */
 
