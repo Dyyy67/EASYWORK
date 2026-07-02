@@ -666,8 +666,8 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
 
         <div class="fgrp">
-          <label class="flbl">Part I — Test Type</label>
-          <select class="fc" id="prelimType1" onchange="debounceSave()" title="Choose the type of test for Part I">
+          <label class="flbl">Test I — Test Type</label>
+          <select class="fc" id="prelimType1" onchange="debounceSave()" title="Choose the type of test for Test I">
             <option value="tf">True or False</option>
             <option value="smile_sad">Smile or Sad</option>
             <option value="check_x">Check or X</option>
@@ -686,8 +686,8 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
         </div>
 
         <div class="fgrp">
-          <label class="flbl">Part II — Test Type</label>
-          <select class="fc" id="prelimType2" onchange="debounceSave()" title="Choose the type of test for Part II">
+          <label class="flbl">Test II — Test Type</label>
+          <select class="fc" id="prelimType2" onchange="debounceSave()" title="Choose the type of test for Test II">
             <option value="wb">Word Bank / Fill-in</option>
             <option value="tf">True or False</option>
             <option value="smile_sad">Smile or Sad</option>
@@ -706,8 +706,8 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
         </div>
 
         <div class="fgrp">
-          <label class="flbl">Part III — Test Type</label>
-          <select class="fc" id="prelimType3" onchange="debounceSave()" title="Choose the type of test for Part III">
+          <label class="flbl">Test III — Test Type</label>
+          <select class="fc" id="prelimType3" onchange="debounceSave()" title="Choose the type of test for Test III">
             <option value="essay">Essay</option>
             <option value="tf">True or False</option>
             <option value="smile_sad">Smile or Sad</option>
@@ -726,8 +726,8 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
         </div>
 
         <div class="fgrp">
-          <label class="flbl">Part IV — Test Type</label>
-          <select class="fc" id="prelimType4" onchange="debounceSave()" title="Choose the type of test for Part IV">
+          <label class="flbl">Test IV — Test Type</label>
+          <select class="fc" id="prelimType4" onchange="debounceSave()" title="Choose the type of test for Test IV">
             <option value="none">— None (Skip this part) —</option>
             <option value="mc">Multiple Choice (A-D)</option>
             <option value="tf">True or False</option>
@@ -742,11 +742,11 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
             <option value="odd_one_out">Odd One Out</option>
             <option value="essay">Essay</option>
           </select>
-          <input class="fc" id="prelimMC" type="number" value="0" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items (0 = skip)" title="Set to 0 or choose None to skip Part IV.">
+          <input class="fc" id="prelimMC" type="number" value="0" min="0" max="80" style="text-align:center;margin-top:5px;" placeholder="# of items (0 = skip)" title="Set to 0 or choose None to skip Test IV.">
         </div>
 
       </div>
-      <div style="font-size:11px;color:#558B2F;margin-top:8px;font-style:italic;">⚙️ Each part is independent — pick any test type or choose <strong>None</strong> to skip that part entirely. Part IV with Multiple Choice gets the audit panel.</div>
+      <div style="font-size:11px;color:#558B2F;margin-top:8px;font-style:italic;">⚙️ Each part is independent — pick any test type or choose <strong>None</strong> to skip that part entirely. Test IV with Multiple Choice gets the audit panel.</div>
     </div>
 
     <!-- File upload area -->
@@ -2277,10 +2277,12 @@ function exportSummativeDOCX(i) {
     grouped[fmt].push(it);
   });
   let itemsBlock = '';
+  const sumRomans = ['I','II','III','IV','V','VI'];
+  let sumTestCounter = 0;
   Object.keys(grouped).forEach(fmt => {
     if (!grouped[fmt].length) return;
     // Section header
-    itemsBlock += para(`Part: ${fmt}`, { bold: true, color: 'E65100', sz: 22 });
+    itemsBlock += para(`Test ${sumRomans[sumTestCounter++] || (sumTestCounter)}: ${fmt}`, { bold: true, color: 'E65100', sz: 22 });
 
     if (fmt === 'Matching Type') {
       // --- Render as a proper two-column table ---
@@ -2308,7 +2310,7 @@ function exportSummativeDOCX(i) {
       // Shuffle for display
       const shuffled = [...colBOptions].sort(() => Math.random() - 0.5);
       grouped[fmt].forEach((it, idx) => {
-        const colA = `${it.number}. ${it.prompt || ''}`;
+        const colA = `${idx + 1}. ${it.prompt || ''}`;
         const colB = shuffled[idx] !== undefined ? shuffled[idx] : (colBOptions[idx] || '');
         tblXml += `<w:tr>${dataCell(colA)}${dataCell(colB)}</w:tr>`;
       });
@@ -2361,14 +2363,14 @@ function exportSummativeDOCX(i) {
         itemsBlock += '<w:p/>';
       }
       // Render items normally
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
+      grouped[fmt].forEach((it, idx) => {
+        itemsBlock += para(`${idx + 1}. ${it.prompt}`, { sz: 20 });
       });
 
     } else if (fmt === 'Sequencing') {
       // --- Render each scrambled item with a blank box [ ___ ] for the pupil's numeric answer ---
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt || ''}`, { sz: 20, bold: true, color: '4527A0' });
+      grouped[fmt].forEach((it, idx) => {
+        itemsBlock += para(`${idx + 1}. ${it.prompt || ''}`, { sz: 20, bold: true, color: '4527A0' });
         const seqItems = Array.isArray(it.items) ? it.items : [];
         seqItems.forEach(s => {
           itemsBlock += para(`     [     ]   ${s}`, { sz: 20 });
@@ -2378,8 +2380,8 @@ function exportSummativeDOCX(i) {
 
     } else if (fmt === 'Odd One Out') {
       // --- Render choices in a 2x2 grid table ---
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt || ''}`, { sz: 20, bold: true, color: '00695C' });
+      grouped[fmt].forEach((it, idx) => {
+        itemsBlock += para(`${idx + 1}. ${it.prompt || ''}`, { sz: 20, bold: true, color: '00695C' });
         const opts = Array.isArray(it.options) ? it.options : [];
         const letters = ['A','B','C','D'];
         const bdr = `<w:top w:val="single" w:sz="4" w:color="00897B"/><w:left w:val="single" w:sz="4" w:color="00897B"/><w:bottom w:val="single" w:sz="4" w:color="00897B"/><w:right w:val="single" w:sz="4" w:color="00897B"/>`;
@@ -2403,14 +2405,14 @@ function exportSummativeDOCX(i) {
         `${iconDef.trueIcon} = ${iconDef.trueLabel} (TRUE)      ${iconDef.falseIcon} = ${iconDef.falseLabel} (FALSE)`,
         { bold: true, color: iconDef.color, sz: 20 }
       );
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}.   [        ]   ${it.prompt || ''}`, { sz: 20 });
+      grouped[fmt].forEach((it, idx) => {
+        itemsBlock += para(`${idx + 1}.   [        ]   ${it.prompt || ''}`, { sz: 20 });
       });
 
     } else {
       // --- All other types: plain numbered list ---
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
+      grouped[fmt].forEach((it, idx) => {
+        itemsBlock += para(`${idx + 1}. ${it.prompt}`, { sz: 20 });
       });
     }
 
@@ -2465,21 +2467,23 @@ function exportSummativeDOCX(i) {
   <w:p/>
   ${(() => {
     let akBlock = '';
+    const akRomans = ['I','II','III','IV','V','VI'];
+    let akTestCounter = 0;
     Object.keys(grouped).forEach(fmt => {
       if (!grouped[fmt].length) return;
-      akBlock += para(fmt + ':', { bold: true, color: 'E65100', sz: 18 });
+      akBlock += para(`Test ${akRomans[akTestCounter++] || (akTestCounter)}: ${fmt}`, { bold: true, color: 'E65100', sz: 18 });
       const akIconDef = {
         'Smile or Sad':    { trueIcon: '\u263A', falseIcon: '\u2639', trueLabel: 'Smile', falseLabel: 'Sad',     trueColor: '2E7D32', falseColor: 'C62828' },
         'Check or X':      { trueIcon: '\u2713', falseIcon: '\u2717', trueLabel: 'Check', falseLabel: 'X',        trueColor: '1565C0', falseColor: 'C62828' },
         'Heart or Thunder':{ trueIcon: '\u2665', falseIcon: '\u26A1', trueLabel: 'Heart', falseLabel: 'Thunder', trueColor: 'AD1457', falseColor: '6A1B9A' },
       }[fmt];
-      grouped[fmt].forEach(it => {
+      grouped[fmt].forEach((it, idx) => {
         if (akIconDef) {
           const isTrue = it.answer === true || it.answer === 'True' || it.answer === 'true';
           const label = isTrue ? `${akIconDef.trueIcon} ${akIconDef.trueLabel}` : `${akIconDef.falseIcon} ${akIconDef.falseLabel}`;
-          akBlock += para(it.number + '. ' + label, { sz: 18, bold: true, color: isTrue ? akIconDef.trueColor : akIconDef.falseColor });
+          akBlock += para((idx + 1) + '. ' + label, { sz: 18, bold: true, color: isTrue ? akIconDef.trueColor : akIconDef.falseColor });
         } else {
-          akBlock += para(it.number + '. ' + x(it.answer || '\u2014'), { sz: 18 });
+          akBlock += para((idx + 1) + '. ' + x(it.answer || '\u2014'), { sz: 18 });
         }
       });
       akBlock += '<w:p/>';
@@ -5518,7 +5522,7 @@ async function prelimGenerate(){
 
   /* JSON format instruction per type (for AI) */
   function typeInstruction(t, count, partNum, isFil){
-    const p = `Part ${['I','II','III'][partNum-1]}`;
+    const p = `Test ${['I','II','III'][partNum-1]}`;
     const en = {
       tf:            `${p}: exactly ${count} True/False questions. Each item: {"q":"...","answer":true or false}. Vary T/F answers (not all true or all false).`,
       smile_sad:     `${p}: exactly ${count} True/False-style statements, same schema as True/False. Each item: {"q":"...","answer":true or false}. Pupils will draw a SMILE if true or a SAD face if false — do not mention smile/sad in the question text itself. Vary true/false answers.`,
@@ -6064,7 +6068,7 @@ function prelimRenderPreview(){
 
   /* Number active parts sequentially */
   const romanNums = ['I','II','III'];
-  const bahagi = isFil ? 'Bahagi' : 'Part';
+  const bahagi = isFil ? 'Bahagi' : 'Test';
   let partCounter = 0;
   function nextPartLabel(type){ return `${bahagi} ${romanNums[partCounter++]}. ${typeLabel(type,isFil)}`; }
 
@@ -6221,7 +6225,7 @@ async function prelimDownload(){
   /* Sequential part labels — only for active/non-null parts */
   const docxRomans = ['I','II','III'];
   let docxCounter = 0;
-  function nextDocxLabel(type){ return `Part ${docxRomans[docxCounter++]}. ${typeLabel(type, isFil)}`; }
+  function nextDocxLabel(type){ return `Test ${docxRomans[docxCounter++]}. ${typeLabel(type, isFil)}`; }
   const dp1Label = (dt1 && part1) ? nextDocxLabel(dt1) : null;
   const dp2Label = (dt2 && part2) ? nextDocxLabel(dt2) : null;
   const dp3Label = (dt3 && part3) ? nextDocxLabel(dt3) : null;
@@ -6889,7 +6893,7 @@ async function prelimGeneratePartIV(){
     `=== FILE ${i+1} of ${prelimFiles.length}: ${f.name} ===\n[FULL CONTENT — DO NOT SKIP]\n${f.text.slice(0,12000)}\n=== END FILE ${i+1} ===`
   ).join('\n\n');
   const lang = isFil ? 'FILIPINO (Tagalog)' : 'ENGLISH';
-  const prompt = `You are a teacher creating Part IV — Multiple Choice (Dropdown) for ${grade} ${subject} ${quarter} Quarter Prelim Exam.
+  const prompt = `You are a teacher creating Test IV — Multiple Choice (Dropdown) for ${grade} ${subject} ${quarter} Quarter Prelim Exam.
 Read EVERY one of the ${prelimFiles.length} reference files below. Do not skip any file. Create exactly ${mcCount} multiple-choice items in ${lang}.
 Each item has 4 options. The "answer" field MUST be the EXACT verbatim string of the correct option (case-sensitive, trimmed). Avoid lazy distractors like "All of the above", "None of the above", "Both A and B", "Neither A nor B". No duplicate options.
 
@@ -6919,10 +6923,10 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     const mcCount = parseInt(document.getElementById('prelimMC')?.value)||0;
     if(window.prelimResult && mcCount>0){
       const gstat = document.getElementById('prelimGStat');
-      if(gstat) gstat.textContent = 'Generating Part IV — Multiple Choice…';
+      if(gstat) gstat.textContent = 'Generating Test IV — Multiple Choice…';
       await prelimGeneratePartIV();
       if(typeof prelimRenderPreview==='function') prelimRenderPreview();
-      if(gstat) gstat.textContent = '✅ Done (with Part IV)!';
+      if(gstat) gstat.textContent = '✅ Done (with Test IV)!';
     }
   };
 })();
@@ -6948,7 +6952,7 @@ function renderPart4WithAudit(){
   if(!r.part4 || !Array.isArray(r.part4.items) || !r.part4.items.length) return;
 
   const isFil = r.isFil;
-  const label = isFil ? 'Bahagi IV. Multiple Choice (Dropdown)' : 'Part IV. Multiple Choice (Dropdown)';
+  const label = isFil ? 'Bahagi IV. Multiple Choice (Dropdown)' : 'Test IV. Multiple Choice (Dropdown)';
   const instr = isFil
     ? 'Piliin ang tamang sagot mula sa dropdown.'
     : 'Select the correct answer from the dropdown.';
@@ -7001,7 +7005,7 @@ function renderPart4Items(){
   if(sumHost){
     const clean = totalErr===0 && totalWarn===0 && totalSoft===0;
     sumHost.innerHTML = clean
-      ? '<div class="audit-summary clean">✅ Audit clean — all Part IV items pass verbatim, duplicate, and distractor checks.</div>'
+      ? '<div class="audit-summary clean">✅ Audit clean — all Test IV items pass verbatim, duplicate, and distractor checks.</div>'
       : `<div class="audit-summary">📋 Audit: <strong style="color:#C62828">${totalErr} error${totalErr!==1?'s':''}</strong>, <strong style="color:#E65100">${totalWarn} warning${totalWarn!==1?'s':''}</strong>, <strong style="color:#6D4C00">${totalSoft} soft warning${totalSoft!==1?'s':''}</strong>. Hover ⚠ icons for details. Edit fields below to fix; re-audit is automatic.</div>`;
   }
 
