@@ -658,6 +658,10 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
         <label class="flbl">School Year</label>
         <input class="fc" id="prelimSY" placeholder="e.g. 2025-2026" value="2025-2026" oninput="debounceSave()">
       </div>
+      <div class="fgrp" style="min-width:140px;flex:0 0 auto;">
+        <label class="flbl">Date</label>
+        <input class="fc" id="prelimDate" placeholder="e.g. October 15, 2025" oninput="debounceSave()">
+      </div>
     </div>
 
     <!-- Part settings -->
@@ -747,6 +751,22 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
 
       </div>
       <div style="font-size:11px;color:#558B2F;margin-top:8px;font-style:italic;">⚙️ Each part is independent — pick any test type or choose <strong>None</strong> to skip that part entirely. Test IV with Multiple Choice gets the audit panel.</div>
+    </div>
+
+    <!-- Paste text / picture reference material (AI reads this too) -->
+    <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:800;color:#7A5800;margin-bottom:4px;">🖼️ Reference Material (optional) — read by AI for accurate questions</div>
+      <div style="font-size:11px;color:#8a6d00;margin-bottom:10px;">Paste lesson text/notes and/or paste or upload pictures of the lesson pages. The AI will read them and base exam questions on this exact content, in addition to any uploaded files below.</div>
+      <textarea class="fc" id="prelimRefText" rows="5"
+        placeholder="Paste lesson content, notes, or word list here. You can ALSO paste pictures (Ctrl+V / long-press → Paste) directly into this box — up to 15 images. Add extra instructions on a separate line, e.g. 'Focus on Chapter 2 only'."
+        oninput="debounceSave()" onpaste="prelimHandlePaste(event)"
+        style="resize:vertical;width:100%;min-height:100px;"></textarea>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn bo bsm" onclick="document.getElementById('prelimRefImgInput').click()">📎 Upload Picture(s)</button>
+        <input type="file" id="prelimRefImgInput" accept="image/*" multiple style="display:none" onchange="prelimHandleRefImages(this.files)">
+        <div style="font-size:11px;color:#8a6d00;">📋 Or paste images straight into the box above (Ctrl+V). JPG/PNG • up to 15 images.</div>
+      </div>
+      <div id="prelimRefImgList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
     </div>
 
     <!-- File upload area -->
@@ -5158,6 +5178,46 @@ async function feDownloadDOCX(){
 
 let prelimFiles = [];      // Array of {name, text} — extracted text from each docx
 let prelimResult = null;   // Generated exam data {partI, partII, partIII, answerKey, storyRefs}
+let prelimRefImages = [];  // Array of {name, dataUrl} — pasted/uploaded reference pictures
+
+async function prelimHandleRefImages(fileList){
+  const files = Array.from(fileList).filter(f => /^image\//i.test(f.type));
+  if(!files.length){ toast('Please upload image files (JPG/PNG).','te'); return; }
+  if(files.length + prelimRefImages.length > 15){ toast('Maximum 15 pictures.','te'); return; }
+  for(const file of files){
+    const dataUrl = await new Promise((res)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); });
+    prelimRefImages.push({ name:file.name, dataUrl });
+  }
+  const inp = document.getElementById('prelimRefImgInput'); if(inp) inp.value='';
+  prelimRenderRefImages();
+}
+function prelimRenderRefImages(){
+  const wrap = document.getElementById('prelimRefImgList');
+  if(!wrap) return;
+  wrap.innerHTML = prelimRefImages.map((im,i)=>`
+    <div style="position:relative;width:62px;height:62px;border:1px solid #FFE082;border-radius:8px;overflow:hidden;">
+      <img src="${im.dataUrl}" style="width:100%;height:100%;object-fit:cover;" alt="${esc(im.name)}">
+      <button onclick="prelimRemoveRefImage(${i})" title="Remove" style="position:absolute;top:1px;right:1px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer;padding:1px 4px;">✕</button>
+    </div>`).join('');
+}
+function prelimRemoveRefImage(i){ prelimRefImages.splice(i,1); prelimRenderRefImages(); }
+async function prelimHandlePaste(ev){
+  try{
+    const items = (ev.clipboardData && ev.clipboardData.items) ? Array.from(ev.clipboardData.items) : [];
+    const imgItems = items.filter(it => it.kind === 'file' && /^image\//i.test(it.type));
+    if(!imgItems.length) return; // allow normal text paste
+    ev.preventDefault();
+    const files = imgItems.map(it => it.getAsFile()).filter(Boolean);
+    if(!files.length) return;
+    if(files.length + prelimRefImages.length > 15){ toast('Maximum 15 pictures.','te'); return; }
+    for(const file of files){
+      const dataUrl = await new Promise((res)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); });
+      prelimRefImages.push({ name: file.name || ('pasted-'+Date.now()+'.png'), dataUrl });
+    }
+    prelimRenderRefImages();
+    toast(`📋 Pasted ${files.length} picture(s).`,'ts');
+  }catch(err){ console.error('prelim paste image failed', err); }
+}
 
 /* ── File handling ── */
 function prelimHandleDrop(e){
@@ -5486,7 +5546,9 @@ function prelimParseJson(raw){
 async function prelimGenerate(){
   const apiKey = getActiveKey();
   if(!apiKey){ toast('⚠️ No API key. Add one in the API Key Manager.','te'); return; }
-  if(prelimFiles.length < 1){ toast('Please upload at least 1 reference file (.docx, .doc, or .pdf).','te'); return; }
+  const prelimRefTextVal = (document.getElementById('prelimRefText')?.value || '').trim();
+  const hasRefMaterial = prelimFiles.length > 0 || !!prelimRefTextVal || prelimRefImages.length > 0;
+  if(!hasRefMaterial){ toast('Please upload a reference file, or paste text/pictures in the Reference Material box.','te'); return; }
   if(prelimFiles.length > 10){ toast('Maximum 10 reference files allowed.','te'); return; }
 
   const subject = document.getElementById('prelimSubject').value.trim() || 'the subject';
@@ -5569,15 +5631,25 @@ async function prelimGenerate(){
   const isFil = /\bfilipino\s*[456]\b/i.test(subject) || /\barpan\b/i.test(subject);
 
   // Build combined context from uploaded files — preserve ALL lesson content
-  const combinedContext = prelimFiles.map((f,i) => {
+  let combinedContext = prelimFiles.map((f,i) => {
     const cleaned = prelimCleanText(f.text || '').slice(0, 14000);
     return `=== REFERENCE FILE ${i+1} of ${prelimFiles.length}: "${f.name}" ===\n${cleaned}\n=== END FILE ${i+1} ===`;
   }).join('\n\n');
 
-  // Guard: if extracted text is too short, warn the teacher
+  // Append pasted reference text (notes/word list/extra instructions)
+  if(prelimRefTextVal){
+    combinedContext += (combinedContext ? '\n\n' : '') +
+      `=== PASTED REFERENCE TEXT / INSTRUCTIONS ===\n${prelimRefTextVal}\n=== END PASTED TEXT ===`;
+  }
+  if(prelimRefImages.length){
+    combinedContext += (combinedContext ? '\n\n' : '') +
+      `(${prelimRefImages.length} reference picture(s) are attached — read every picture carefully: titles, headings, body text, diagrams, captions, examples. Base questions on what is actually shown.)`;
+  }
+
+  // Guard: if extracted text is too short AND there's no pasted text/images, warn the teacher
   const totalChars = prelimFiles.reduce((n,f)=>n + (f.text||'').length, 0);
   const shortFiles = prelimFiles.filter(f => (f.text||'').replace(/\s+/g,'').length < 100);
-  if(shortFiles.length === prelimFiles.length){
+  if(prelimFiles.length > 0 && shortFiles.length === prelimFiles.length && !prelimRefTextVal && !prelimRefImages.length){
     const names = shortFiles.map(f=>f.name).join(', ');
     toast(`⚠️ Could not read text from: ${names}. Try re-saving as .docx or PDF and upload again. (Extracted: ${totalChars} chars)`, 'te');
     return;
@@ -5731,7 +5803,7 @@ ${activeSchema}
   }
 
   try {
-    const rawAll = await prelimCallAI(combinedPrompt, apiKey);
+    const rawAll = await prelimCallAI(combinedPrompt, apiKey, 0, prelimRefImages.map(im => im.dataUrl));
     gfill.style.width = '75%';
     gstat.textContent = 'Parsing response…';
     let all = prelimParseJson(rawAll) || {};
@@ -5811,7 +5883,8 @@ ${activeSchema}
     gfill.style.width = '100%';
     gstat.textContent = '✅ Done!';
 
-    prelimResult = { part1, part2, part3, subject, grade, quarter, isFil, tfCount, wbCount, essayCount, type1, type2, type3, activeParts };
+    const prelimDateVal = (document.getElementById('prelimDate')?.value || '').trim();
+    prelimResult = { part1, part2, part3, subject, grade, quarter, date: prelimDateVal, isFil, tfCount, wbCount, essayCount, type1, type2, type3, activeParts };
     prelimRenderPreview();
     dlBtn.style.display = '';
     toast('✅ Prelim Exam generated successfully!','ts');
@@ -5835,8 +5908,13 @@ ${activeSchema}
      as quota-hit and rotates to the next available key, retrying transparently
      so users don't see "quota reached" while other keys are still good.
    - Detects token-limit / MAX_TOKENS finishes and throws a clear error. */
-async function prelimCallAI(prompt, apiKey, _retryDepth){
+async function prelimCallAI(prompt, apiKey, _retryDepth, images){
   _retryDepth = _retryDepth || 0;
+  images = images || [];
+  const imgParts = images.map(u => {
+    const m = /^data:([^;]+);base64,(.*)$/.exec(u || '');
+    return m ? { mime: m[1], b64: m[2] } : null;
+  }).filter(Boolean);
   const keyObj = mkKeys[mkActive] || {};
   const provider = feDetectProvider(apiKey, keyObj.provider);
   const SYS = 'Return only valid JSON. No markdown. No backticks. No explanation.';
@@ -5855,7 +5933,7 @@ async function prelimCallAI(prompt, apiKey, _retryDepth){
       const wait = Math.min(1500 * Math.pow(2, _retryDepth), 20000); // 1.5s → 3s → 6s → 12s → 20s
       console.warn(`[Prelim] Server overloaded (HTTP ${status}). Retrying in ${wait}ms… (attempt ${_retryDepth+1})`);
       await new Promise(r => setTimeout(r, wait));
-      return prelimCallAI(prompt, apiKey, _retryDepth + 1);
+      return prelimCallAI(prompt, apiKey, _retryDepth + 1, images);
     }
 
     /* ── True quota / rate-limit ── rotate key */
@@ -5868,7 +5946,7 @@ async function prelimCallAI(prompt, apiKey, _retryDepth){
       const nextKey = getActiveKey();
       if(nextKey && nextKey !== apiKey){
         await new Promise(r=>setTimeout(r, 600));
-        return prelimCallAI(prompt, nextKey, _retryDepth + 1);
+        return prelimCallAI(prompt, nextKey, _retryDepth + 1, images);
       }
     }
     throw new Error(errMsg || ('HTTP '+status));
@@ -5880,9 +5958,12 @@ async function prelimCallAI(prompt, apiKey, _retryDepth){
         ? 'https://api.groq.com/openai/v1/chat/completions'
         : 'https://api.openai.com/v1/chat/completions';
       const model = provider==='groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
+      const userContent = (provider==='openai' && imgParts.length)
+        ? [{ type:'text', text: prompt }, ...imgParts.map(p => ({ type:'image_url', image_url:{ url:`data:${p.mime};base64,${p.b64}` } }))]
+        : prompt;
       const r = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
         body:JSON.stringify({ model, max_tokens:4096, temperature:0.7,
-          messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
+          messages:[{role:'system',content:SYS},{role:'user',content:userContent}] }) });
       if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.error?.message||('HTTP '+r.status), r.status); }
       const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
@@ -5924,7 +6005,10 @@ async function prelimCallAI(prompt, apiKey, _retryDepth){
       // forcing the top-up retry loop to fire and accelerate quota exhaustion.
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGmModel(apiKey)}:generateContent?key=${apiKey}`,{
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ contents:[{parts:[{text:SYS+'\n\n'+prompt}]}],
+        body:JSON.stringify({ contents:[{parts:[
+          {text:SYS+'\n\n'+prompt},
+          ...imgParts.map(p => ({ inline_data:{ mime_type:p.mime, data:p.b64 } })),
+        ]}],
           generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json'} }) });
       if(!r.ok){ const e=await r.json().catch(()=>({})); return handleQuotaAndRetry(e.error?.message||('HTTP '+r.status), r.status); }
       const d=await r.json();
@@ -5945,7 +6029,7 @@ async function prelimCallAI(prompt, apiKey, _retryDepth){
 /* ── Preview renderer ── */
 function prelimRenderPreview(){
   if(!prelimResult) return;
-  const { part1, part2, part3, subject, grade, quarter, isFil, type1, type2, type3 } = prelimResult;
+  const { part1, part2, part3, subject, grade, quarter, date, isFil, type1, type2, type3 } = prelimResult;
 
   /* Dynamic label helper */
   function typeLabel(t, isFil){
@@ -6122,6 +6206,7 @@ function prelimRenderPreview(){
           <div style="font-size:15px;font-weight:900;color:#002060;margin-top:3px;">${examTitle}</div>
           <div style="font-size:12px;color:#0070C0;">SY 2025-2026</div>
           <div style="font-size:13px;font-weight:800;color:#002060;margin-top:2px;">${esc(subject)}</div>
+          ${date ? `<div style="font-size:11px;color:#666;margin-top:2px;">${esc(date)}</div>` : ''}
           <div style="font-size:11px;color:#666;margin-top:2px;">${esc(grade)}</div>
         </div>
         ${logoImg(logoR)}
@@ -6183,7 +6268,7 @@ function prelimToggleAnsKey(){
 async function prelimDownload(){
   if(!prelimResult){ toast('Generate the exam first.','te'); return; }
 
-  const { part1, part2, part3, subject, grade, quarter, isFil,
+  const { part1, part2, part3, subject, grade, quarter, date, isFil,
           type1: t1='tf', type2: t2='wb', type3: t3='essay' } = prelimResult;
   const prepBy = document.getElementById('prepBy')?.value || '';
   const syVal  = (document.getElementById('prelimSY')?.value || '').trim() || '2025-2026';
@@ -6509,6 +6594,8 @@ async function prelimDownload(){
       children:[new TextRun({ text:'SY '+syVal, size:20, color:'0070C0', font:'Times New Roman' })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
       children:[new TextRun({ text:subject, bold:true, size:26, color:'002060', font:'Franklin Gothic Medium' })] }),
+    ...(date ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+      children:[new TextRun({ text:date, size:20, color:'555555', font:'Times New Roman' })] })] : []),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:40},
       children:[new TextRun({ text:grade||'', size:20, color:'555555', italics:true, font:'Times New Roman' })] }),
     new Paragraph({ spacing:{before:80, after:80},
