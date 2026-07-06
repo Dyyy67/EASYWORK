@@ -6017,8 +6017,19 @@ function prelimRenderPreview(){
       </div>`;
     }
     if(t==='wb'){
-      const wb=(part.wordBank||[]).map(w=>`<strong>${esc(w)}</strong>`).join(' • ');
-      return `<div style="margin-bottom:6px;"><strong>${isFil?'Listahan ng Salita':'Word Bank'}:</strong> ${wb}</div>`+
+      const words=part.wordBank||[];
+      const wbTable = `<table style="border-collapse:collapse;width:100%;margin-bottom:8px;">
+        ${(() => {
+          const cols=4; let rows='';
+          for(let i=0;i<words.length;i+=cols){
+            const rowWords = words.slice(i,i+cols);
+            rows += '<tr>'+rowWords.map(w=>`<td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-weight:700;">${esc(w)}</td>`).join('')+
+              (rowWords.length<cols ? `<td style="border:1px solid #ccc;padding:5px 8px;" colspan="${cols-rowWords.length}"></td>` : '')+'</tr>';
+          }
+          return rows;
+        })()}
+      </table>`;
+      return `<div style="margin-bottom:6px;"><strong>${isFil?'Listahan ng Salita':'Word Bank'}:</strong></div>${wbTable}`+
         items.map((it,i)=>`<div style="margin:2px 0;">${i+1}. ${esc(it.q)}</div>`).join('');
     }
     if(t==='essay') return items.map((it,i)=>`
@@ -6300,7 +6311,25 @@ async function prelimDownload(){
     if(t==='wb' && part.wordBank && part.wordBank.length){
       const wbLabel = isFil ? 'Listahan ng Salita:' : 'Word Bank:';
       paras.push(bodyPar([new TextRun({ text: wbLabel, bold:true, size:22, font:iFont })], 20, 10));
-      paras.push(bodyPar([new TextRun({ text: part.wordBank.join('  •  '), bold:true, size:22, font:iFont })], 10, 40));
+      const wbBorder = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
+      const wbBorders = { top:wbBorder, bottom:wbBorder, left:wbBorder, right:wbBorder };
+      const wbCols = 4;
+      const wbWords = part.wordBank;
+      const wbCellW = Math.floor(8640 / wbCols);
+      const wbRows = [];
+      for(let i=0; i<wbWords.length; i+=wbCols){
+        const rowWords = wbWords.slice(i, i+wbCols);
+        const cells = rowWords.map(w => new TableCell({
+          borders: wbBorders, width:{size:wbCellW,type:WidthType.DXA}, margins:{top:60,bottom:60,left:120,right:120},
+          children:[new Paragraph({ alignment:AlignmentType.CENTER, children:[new TextRun({ text:w, bold:true, size:22, font:iFont })] })]
+        }));
+        while(cells.length < wbCols){
+          cells.push(new TableCell({ borders: wbBorders, width:{size:wbCellW,type:WidthType.DXA}, children:[new Paragraph({ children:[] })] }));
+        }
+        wbRows.push(new TableRow({ children: cells }));
+      }
+      paras.push(new Table({ width:{size:8640,type:WidthType.DXA}, columnWidths:Array(wbCols).fill(wbCellW), rows: wbRows }));
+      paras.push(bodyPar([new TextRun({ text:'', size:10, font:iFont })], 10, 60));
     }
 
     if(t==='tf'){
