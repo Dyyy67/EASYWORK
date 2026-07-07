@@ -363,6 +363,7 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
   <div class="ov-spin"></div>
   <div class="ov-title">Generating Lesson Plan…</div>
   <div class="ov-sub" id="ovSub">Asking Gemini AI for curriculum content…</div>
+  <div class="gbar" style="width:280px;"><div class="gfill" id="ovGFill" style="width:0%;"></div></div>
 </div>
 
 <!-- RESTORE MODAL -->
@@ -794,6 +795,15 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
       <button class="btn bg" id="prelimGenBtn" onclick="prelimGenerate()" style="min-width:180px;justify-content:center;">🤖 Generate Prelim Exam</button>
       <button class="btn bo" id="prelimDlBtn" onclick="prelimDownload()" style="display:none;min-width:180px;justify-content:center;">⬇ Download as Word (.docx)</button>
+      <label style="font-size:12px;font-weight:700;color:#555;display:flex;align-items:center;gap:6px;">🎯 Score Box Design:
+        <select id="prelimScoreBoxStyle" onchange="saveScoreBoxStyle('prelim'); if(typeof prelimRenderPreview==='function' && prelimResult) prelimRenderPreview();" style="padding:4px 8px;border-radius:6px;border:1px solid #ccc;font-size:12px;">
+          <option value="navy">🟦 Navy Box</option>
+          <option value="maroon">🟥 Maroon Box</option>
+          <option value="green">🟩 Green Dashed</option>
+          <option value="purple">🟪 Purple Dotted</option>
+          <option value="circle">🔵 Blue Circle</option>
+        </select>
+      </label>
     </div>
     <div id="prelimGP" style="display:none;margin-bottom:8px;">
       <div style="background:#E8F5E9;border-radius:20px;height:8px;overflow:hidden;">
@@ -1089,7 +1099,16 @@ table.tos-tbl tr.tos-insert-tgt td.tos-cell-topic{background:#E8F5E9!important;}
     </div><!-- /fePreviewWrap -->
 
     <!-- Action bar -->
-    <div class="abar" style="margin-top:14px;">
+    <div class="abar" style="margin-top:14px;align-items:center;">
+      <label style="font-size:12px;font-weight:700;color:#555;display:flex;align-items:center;gap:6px;">🎯 Score Box Design:
+        <select id="feScoreBoxStyle" onchange="saveScoreBoxStyle('fe')" style="padding:4px 8px;border-radius:6px;border:1px solid #ccc;font-size:12px;">
+          <option value="navy">🟦 Navy Box</option>
+          <option value="maroon">🟥 Maroon Box</option>
+          <option value="green">🟩 Green Dashed</option>
+          <option value="purple">🟪 Purple Dotted</option>
+          <option value="circle">🔵 Blue Circle</option>
+        </select>
+      </label>
       <div style="flex:1;"></div>
       <button class="btn bg" id="feDlBtn" onclick="feDownloadDOCX()" style="display:none;">⬇ Download Final Exam (.docx)</button>
     </div>
@@ -1633,6 +1652,47 @@ function clearRestore() {
 function sv(id,v){ const e=document.getElementById(id); if(e) e.value=v; }
 function gv(id){ return (document.getElementById(id)||{}).value||''; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ==================== SCORE BOX DESIGN (shared: Prelim + Final Exam) ====================
+const SCORE_BOX_DESIGNS = {
+  navy:   { label:'Navy Box',      color:'002060', htmlBorder:'3px double',  docxBorder:'double',  shape:'box'    },
+  maroon: { label:'Maroon Box',    color:'8B0000', htmlBorder:'2.5px solid', docxBorder:'single',  shape:'box'    },
+  green:  { label:'Green Dashed',  color:'2E7D32', htmlBorder:'2.5px dashed',docxBorder:'dashed',  shape:'box'    },
+  purple: { label:'Purple Dotted', color:'6A1B9A', htmlBorder:'2.5px dotted',docxBorder:'dotted',  shape:'box'    },
+  circle: { label:'Blue Circle',   color:'1565C0', htmlBorder:'3px solid',   docxBorder:'single',  shape:'circle' },
+};
+function getScoreBoxStyle(prefix){
+  const sel = document.getElementById(prefix+'ScoreBoxStyle');
+  const key = (sel && sel.value) || localStorage.getItem(prefix+'ScoreBoxStyle') || 'navy';
+  return SCORE_BOX_DESIGNS[key] ? key : 'navy';
+}
+function saveScoreBoxStyle(prefix){
+  const sel = document.getElementById(prefix+'ScoreBoxStyle');
+  if(sel) localStorage.setItem(prefix+'ScoreBoxStyle', sel.value);
+}
+function initScoreBoxSelects(){
+  ['prelim','fe'].forEach(prefix=>{
+    const sel = document.getElementById(prefix+'ScoreBoxStyle');
+    if(!sel) return;
+    const saved = localStorage.getItem(prefix+'ScoreBoxStyle');
+    if(saved && SCORE_BOX_DESIGNS[saved]) sel.value = saved;
+  });
+}
+document.addEventListener('DOMContentLoaded', initScoreBoxSelects);
+// Build the HTML score-box element used in the on-screen Prelim preview.
+function buildScoreBoxHtml(designKey, totalItems, isFil){
+  const d = SCORE_BOX_DESIGNS[designKey] || SCORE_BOX_DESIGNS.navy;
+  const shapeStyle = d.shape==='circle'
+    ? `border-radius:50%;width:58px;height:58px;`
+    : `border-radius:6px;width:52px;padding:6px 4px;`;
+  // Portrait badge: label on top, a writing line for the actual score in the middle,
+  // and the total item count ( / N ) below it — sits inline next to Name/Date.
+  return `<div style="flex-shrink:0;${shapeStyle}border:${d.htmlBorder} #${d.color};display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;line-height:1.3;gap:2px;">
+    <div style="font-size:7.5px;font-weight:900;color:#${d.color};letter-spacing:.5px;">${isFil?'ISKOR':'SCORE'}</div>
+    <div style="width:32px;border-bottom:1.5px solid #${d.color};height:9px;"></div>
+    <div style="font-size:10px;font-weight:800;color:#${d.color};">/ ${totalItems||0}</div>
+  </div>`;
+}
 function toast(msg,cls='ti'){
   const c=document.getElementById('tw'), d=document.createElement('div');
   d.className='toast '+cls; d.textContent=msg; c.appendChild(d);
@@ -2167,26 +2227,75 @@ async function generateSummative(i) {
   const btn = document.getElementById('sumGenBtn_' + i);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
 
-  document.getElementById('loadingOv').classList.add('show');
+  const ov = document.getElementById('loadingOv');
+  const gfill = document.getElementById('ovGFill');
+  ov.classList.add('show');
   document.querySelector('.ov-title').textContent = 'Generating Summative Test…';
-  document.getElementById('ovSub').textContent = `${row.area} — ${typesLabel} (${itemCount} items, ${getSummativeGradeGuidance(gv('gradeLevel'), row).display})`;
+  const setStat = (txt, pct) => {
+    document.getElementById('ovSub').textContent = txt;
+    if (gfill) gfill.style.width = Math.max(4, Math.min(100, pct)) + '%';
+  };
+  setStat(`${row.area} — ${typesLabel} (item 1 of ${itemCount})…`, 6);
 
   try {
-    const prompt = buildSummativePrompt(row, itemCount, types);
-    const result = await fetchAIPrompt(prompt, 8192, sumRefImages.map(im => im.dataUrl));
-    const items = (result.items || []).slice(0, itemCount);
+    /* Robust generation loop: keep requesting the remaining items until the
+       exact count is reached (or we truly run out of retries), instead of
+       silently padding with placeholder text after a single call. The status
+       line updates in real time so the teacher can see exactly which item
+       number is being generated and knows the app is still working. */
+    let items = [];
+    let meta = null;
+    let attempt = 0;
+    const maxAttempts = 5;
+    let quotaRotations = 0;
+
+    while (items.length < itemCount && attempt < maxAttempts && quotaRotations < 3) {
+      attempt++;
+      const remaining = itemCount - items.length;
+      setStat(`${row.area} — generating item ${items.length + 1} of ${itemCount}${attempt > 1 ? ` (pass ${attempt})` : ''}…`,
+        6 + Math.round((items.length / itemCount) * 88));
+      let result;
+      try {
+        const prompt = buildSummativePrompt(row, remaining, types);
+        result = await fetchAIPrompt(prompt, 8192, sumRefImages.map(im => im.dataUrl));
+      } catch (e) {
+        if (e.message === 'QUOTA' && markQuota(apiKey)) {
+          quotaRotations++;
+          setStat('🔄 Quota hit — switching API key…', 8);
+          await new Promise(r => setTimeout(r, 800));
+          attempt--;
+          continue;
+        }
+        if (attempt >= maxAttempts) throw e;
+        setStat(`⚠️ Connection hiccup — retrying (${attempt}/${maxAttempts})…`, 8);
+        await new Promise(r => setTimeout(r, 900 * attempt));
+        continue;
+      }
+      if (!meta) meta = result;
+      const newItems = (result.items || []).filter(Boolean);
+      for (const it of newItems) {
+        if (items.length < itemCount) items.push(it);
+      }
+      setStat(`${row.area} — ${Math.min(items.length, itemCount)} of ${itemCount} items ready…`,
+        6 + Math.round((items.length / itemCount) * 90));
+    }
+
+    /* Last-resort fill — only reached if the AI truly could not deliver the
+       full count after multiple honest attempts. Clearly labeled so the
+       teacher notices and can fill it in manually, rather than a silent gap. */
     while (items.length < itemCount) {
       const fmt = types[items.length % types.length];
-      items.push({ number: items.length + 1, format: fmt, prompt: `[${fmt} — Item ${items.length + 1}]`, points: 2 });
+      items.push({ number: items.length + 1, format: fmt, prompt: `[${fmt} — Item ${items.length + 1}: needs manual entry]`, points: 2 });
     }
+    items = items.slice(0, itemCount).map((it, idx) => ({ ...it, number: idx + 1 }));
 
     state.summatives[i] = {
       itemCount,
       testTypes: types,
-      testType: (result.testTypes || types).join(' + '),
-      title: result.title || `Summative — ${row.area}`,
-      instructions: result.instructions || '',
-      wordBank: result.wordBank || [],
+      testType: (meta?.testTypes || types).join(' + '),
+      title: meta?.title || `Summative — ${row.area}`,
+      instructions: meta?.instructions || '',
+      wordBank: meta?.wordBank || [],
       items,
       generatedAt: new Date().toISOString(),
       area: row.area,
@@ -2194,6 +2303,7 @@ async function generateSummative(i) {
       subjectMatter: row.subjectMatter,
     };
 
+    setStat(`✅ ${items.length} of ${itemCount} items generated!`, 100);
     renderSummativesTable();
     autoSave();
     exportSummativeDOCX(i);
@@ -2206,9 +2316,10 @@ async function generateSummative(i) {
     }
     handleApiError(e);
   } finally {
-    document.getElementById('loadingOv').classList.remove('show');
+    ov.classList.remove('show');
     document.querySelector('.ov-title').textContent = 'Generating Lesson Plan…';
     document.getElementById('ovSub').textContent = 'Asking Gemini AI for curriculum content…';
+    if (gfill) gfill.style.width = '0%';
     if (btn) { btn.disabled = false; }
     renderSummativesTable();
   }
@@ -4258,81 +4369,26 @@ async function feGenerate(){
     : `- Language appropriate for ${grade} level.`;
 
   let globalNum = 1;
-  let tasksDone = 0;
 
-  /* ── Step 5: Generate each task ──
-     Reference content is per-topic: each lesson row's own uploaded file (TOS Management)
-     is used ONLY for that topic's questions, so the AI reads the exact matching content. */
-  for(const task of tasks){
-    if(feGenAbort) break;
+  /* ── Step 5: Generate the WHOLE exam in one request ──
+     All lessons + all cognitive levels are sent together in a single prompt (grouped by
+     lesson so reference text isn't repeated), instead of one API call per task. This keeps
+     quota usage to (ideally) a single request per generation instead of `totalTasks` calls.
+     Any tasks that come back short after retries automatically get a follow-up request
+     for just the missing items — the same robustness as before, far fewer calls. */
+  if(!feGenAbort){
+    gstat.textContent = `Generating all ${totalItems} items in one request…`;
+    gfill.style.width = '10%';
 
-    gstat.textContent =
-      `[${tasksDone+1}/${totalTasks}] "${task.lesson.topic}" — ${task.cogShort} (${task.count} item${task.count>1?'s':''})…`;
-    gfill.style.width = Math.round(tasksDone / totalTasks * 90) + '%';
+    const itemsByTask = await feCallCombinedAPI(tasks, isFilipinoSubject, grade, subject, (have, total, attempt) => {
+      gstat.textContent = attempt > 1
+        ? `Requesting ${total-have} remaining item${(total-have)!==1?'s':''} (attempt ${attempt})…`
+        : `Generating all ${total} items in one request…`;
+      gfill.style.width = Math.min(90, Math.round(have / total * 90)) + '%';
+    });
 
-    const competencyLine = task.lesson.competency
-      ? `Learning Competency: "${task.lesson.competency}"`
-      : `Topic/Lesson: "${task.lesson.topic}"`;
-
-    const topicRefText = (task.lesson.refText||'').slice(0, 12000);
-
-    const refLineFil = topicRefText
-      ? `\nSANGGUNIANG NILALAMAN PARA SA ARALING ITO (ibatay ANG TANONG dito):\n"""\n${topicRefText}\n"""\n`
-      : '';
-    const refLineEn = topicRefText
-      ? `\nREFERENCE CONTENT FOR THIS SPECIFIC TOPIC (base the questions on this exact material):\n"""\n${topicRefText}\n"""\n`
-      : '';
-
-    const prompt = isFilipinoSubject
-? `Ikaw ay isang guro na gumagawa ng Pangwakas na Pagsusulit (Final Examination) sa ${subject} para sa ${grade}.
-${competencyLine}
-Antas ng Pag-iisip (Cognitive Level): ${task.cogLabel} (${task.cogDiff})
-${refLineFil}
-
-Gumawa ng eksaktong ${task.count} tanong na may apat na pagpipilian (multiple choice) sa antas na "${task.cogShort}" tungkol sa araling ito.
-
-Mga Panuntunan:
-- Lahat ng tanong ay dapat nasa "${task.cogShort}" na antas ng pag-iisip (${task.cogDiff}).
-- Bawat tanong ay may eksaktong 4 na pagpipilian: A, B, C, D.
-- Isang tamang sagot lang bawat tanong.
-- ISULAT SA FILIPINO — simpleng salita na naiintindihan ng mga mag-aaral ng Grades 4–6.
-- Huwag isama ang letra ng sagot sa loob ng tanong.
-- Sumagot LAMANG ng valid JSON array. Walang markdown, walang backticks, walang paliwanag bago o pagkatapos.
-
-[
-  {
-    "question": "Tanong dito?",
-    "choices": ["Pagpipilian A", "Pagpipilian B", "Pagpipilian C", "Pagpipilian D"],
-    "answer": "A"
-  }
-]`
-:
-`You are a school teacher writing a Final Examination for ${grade} ${subject}.
-${competencyLine}
-Cognitive Level: ${task.cogLabel} (${task.cogDiff})
-${refLineEn}
-
-Generate exactly ${task.count} multiple choice question${task.count>1?'s':''} at the "${task.cogShort}" cognitive level about this lesson/competency.
-
-Rules:
-- All questions MUST be at the "${task.cogShort}" cognitive level (${task.cogDiff}).
-- Each question has exactly 4 choices: A, B, C, D.
-- Exactly one correct answer per question.
-- Language appropriate for ${grade} level.
-- Do NOT include the answer letter inside the question text.
-- Respond ONLY with a valid JSON array. No markdown, no backticks, no explanation before or after.
-
-[
-  {
-    "question": "Question text here?",
-    "choices": ["Choice A text", "Choice B text", "Choice C text", "Choice D text"],
-    "answer": "A"
-  }
-]`;
-
-    try{
-      const items = await feCallAnthropicAPI(prompt, task.count, task.cogShort, task.lesson.topic, isFilipinoSubject);
-      /* items is ALWAYS exactly task.count long (padded if needed) */
+    tasks.forEach((task, ti) => {
+      const items = itemsByTask.get(ti) || [];
       items.forEach(it => {
         feExamItems.push({
           num:        globalNum++,
@@ -4345,21 +4401,7 @@ Rules:
           answer:     String(it.answer||'A').toUpperCase().charAt(0)
         });
       });
-    } catch(e){
-      console.error('Error:', e);
-      toast('⚠️ Error for "' + task.lesson.topic + '" (' + task.cogShort + '): ' + e.message, 'te');
-      /* Still pad so total item count stays correct */
-      for(let p = 0; p < task.count; p++){
-        feExamItems.push({
-          num: globalNum++, topic: task.lesson.topic, competency: task.lesson.competency,
-          cogLabel: task.cogLabel, cogIdx: task.cogIdx,
-          question: '[' + task.cogShort + ' — ' + task.lesson.topic + '] Item ' + (p+1) + ' (regenerate)',
-          choices: ['Option A','Option B','Option C','Option D'], answer: 'A'
-        });
-      }
-    }
-
-    tasksDone++;
+    });
   }
 
   gfill.style.width = '100%';
@@ -4591,6 +4633,13 @@ async function feRawCall(prompt, apiKey, provider){
   }
 }
 
+/* Strip a leading letter/number label the AI may have echoed into the choice text itself
+   (e.g. "A) Fabric", "A. Fabric", "(A) Fabric", "a) Fabric") so it never gets duplicated
+   when we later prepend our own "A. ", "B. " labels. */
+function feStripChoiceLabel(s){
+  return String(s||'').trim().replace(/^\(?[A-Da-d]\)?[.):]\s+/, '').trim();
+}
+
 /* Parse JSON array from raw AI text */
 function feParseItems(raw){
   if(!raw) return [];
@@ -4611,8 +4660,8 @@ function feParseItems(raw){
       .map(it=>({
         question: it.question.trim(),
         choices:  it.choices.length===4
-          ? it.choices.map(c=>String(c||'').trim()||'—')
-          : [...it.choices.map(c=>String(c||'').trim()), 'Option C','Option D'].slice(0,4),
+          ? it.choices.map(c=>feStripChoiceLabel(c)||'—')
+          : [...it.choices.map(c=>feStripChoiceLabel(c)), 'Option C','Option D'].slice(0,4),
         answer: String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A')
       }));
   }catch(e){ return []; }
@@ -4717,6 +4766,202 @@ async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipi
   }
 
   return collected.slice(0, needed);
+}
+
+/* ── Combined single-request generator (all lessons + all cognitive levels in ONE prompt) ──
+   This drastically cuts API calls (and quota burn) vs. the old one-call-per-task loop:
+   normally the WHOLE exam is produced from a single request. The same key-rotation /
+   quota / overload handling as feCallAnthropicAPI is reused, and any tasks that come back
+   short after retries get one more focused follow-up request for just the missing items. */
+function feBuildCombinedPrompt(tasks, missingOnly, isFilipinoLang, grade, subject){
+  // Group tasks by lesson so each lesson's reference text is sent ONCE, not once per cog level.
+  const byLesson = new Map();
+  tasks.forEach((t, idx) => {
+    if(missingOnly && !missingOnly.has(idx)) return;
+    const need = missingOnly ? missingOnly.get(idx) : t.count;
+    if(!need) return;
+    if(!byLesson.has(t.lessonIdx)) byLesson.set(t.lessonIdx, { lesson: t.lesson, items: [] });
+    byLesson.get(t.lessonIdx).items.push({ t: idx, task: t, need });
+  });
+
+  let blocks = [];
+  for(const [, group] of byLesson){
+    const refText = (group.lesson.refText||'').slice(0, 6000);
+    const compLine = group.lesson.competency
+      ? (isFilipinoLang? `Kasanayan: "${group.lesson.competency}"` : `Learning Competency: "${group.lesson.competency}"`)
+      : (isFilipinoLang? `Paksa: "${group.lesson.topic}"` : `Topic: "${group.lesson.topic}"`);
+    const refBlock = refText
+      ? (isFilipinoLang ? `Sanggunian:\n"""\n${refText}\n"""\n` : `Reference:\n"""\n${refText}\n"""\n`)
+      : '';
+    const taskLines = group.items.map(({t,task,need}) =>
+      isFilipinoLang
+        ? `  - Task ${t}: Antas na "${task.cogShort}" (${task.cogDiff}) — gumawa ng eksaktong ${need} tanong.`
+        : `  - Task ${t}: "${task.cogShort}" level (${task.cogDiff}) — generate exactly ${need} question${need>1?'s':''}.`
+    ).join('\n');
+    blocks.push(`${compLine}\n${refBlock}${taskLines}`);
+  }
+  const blocksText = blocks.join('\n\n');
+
+  return isFilipinoLang
+? `Ikaw ay isang guro na gumagawa ng Pangwakas na Pagsusulit (Final Examination) sa ${subject} para sa ${grade}.
+
+Ito ang mga aralin at ang bilang ng tanong na kailangan bawat antas ng pag-iisip:
+
+${blocksText}
+
+Mga Panuntunan:
+- Bawat tanong ay may eksaktong 4 na pagpipilian (multiple choice: A, B, C, D) at isang tamang sagot lang.
+- ISULAT SA FILIPINO — simpleng salita na naiintindihan ng mga mag-aaral ng Grades 4–6.
+- Huwag isama ang letra ng sagot (hal. "A)" o "A.") sa loob ng tanong O sa loob ng bawat pagpipilian — isulat lamang ang nilalaman, walang prefix na letra.
+- Markahan ang BAWAT tanong ng "t" na eksaktong tugma sa Task number sa itaas.
+- Sumagot LAMANG ng iisang valid JSON array na sumasaklaw sa LAHAT ng task sa itaas. Walang markdown, walang backticks, walang paliwanag bago o pagkatapos.
+
+[
+  { "t": 0, "question": "Tanong dito?", "choices": ["Pagpipilian A", "Pagpipilian B", "Pagpipilian C", "Pagpipilian D"], "answer": "A" }
+]`
+: `You are a school teacher writing a Final Examination for ${grade} ${subject}.
+
+Here are the lessons and how many questions are needed at each cognitive level:
+
+${blocksText}
+
+Rules:
+- Each question has exactly 4 multiple-choice options (A, B, C, D) with exactly one correct answer.
+- Language appropriate for ${grade} level.
+- Do NOT include a letter prefix like "A)" or "A." inside the question text OR inside any of the choice strings themselves — write only the content, no letter label.
+- Tag EVERY question with "t" matching the exact Task number listed above.
+- Respond ONLY with a single valid JSON array covering ALL tasks above. No markdown, no backticks, no explanation before or after.
+
+[
+  { "t": 0, "question": "Question text here?", "choices": ["Choice A text", "Choice B text", "Choice C text", "Choice D text"], "answer": "A" }
+]`;
+}
+
+// Lightweight direct parse that keeps the "t" tag (feParseItems strips unknown fields).
+function feParseCombinedRaw(raw){
+  if(!raw) return [];
+  let txt = String(raw).replace(/^\s*```json/i,'').replace(/^\s*```/,'').replace(/```\s*$/,'').trim();
+  const m = txt.match(/\[[\s\S]*\]/);
+  if(!m) return [];
+  let block = m[0]
+    .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")
+    .replace(/,\s*([}\]])/g,'$1')
+    .replace(/}\s*{/g,'},{');
+  try{
+    const arr = JSON.parse(block);
+    if(!Array.isArray(arr)) return [];
+    return arr
+      .filter(it => it && typeof it.question==='string' && it.question.trim() && Array.isArray(it.choices) && Number.isInteger(it.t))
+      .map(it => ({
+        t: it.t,
+        question: it.question.trim(),
+        choices:  it.choices.length===4
+          ? it.choices.map(c=>feStripChoiceLabel(c)||'—')
+          : [...it.choices.map(c=>feStripChoiceLabel(c)), 'Option C','Option D'].slice(0,4),
+        answer: String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A')
+      }));
+  }catch(e){ return []; }
+}
+
+async function feCallCombinedAPI(tasks, isFilipinoSubject, grade, subject, onProgress){
+  const MAX_ATTEMPTS   = 3;
+  const MAX_KEY_ROTATE = mkKeys.length + 1;
+  const collected = new Map(); // taskIdx -> array of items
+  tasks.forEach((t,i) => collected.set(i, []));
+  const totalNeeded = tasks.reduce((s,t)=>s+t.count, 0);
+  const countCollected = () => tasks.reduce((s,t,i)=>s+collected.get(i).length, 0);
+
+  let keyRotates = 0;
+
+  while(countCollected() < totalNeeded && keyRotates <= MAX_KEY_ROTATE){
+    if(typeof feGenAbort!=='undefined' && feGenAbort) break;
+    const apiKey = getActiveKey();
+    if(!apiKey){
+      feGenPause('⚠️ All API keys hit quota. Add a new key then click Resume.');
+      await feWaitForResume();
+      if(!getActiveKey()) break;
+      continue;
+    }
+
+    const keyObj   = mkKeys[mkActive] || {};
+    const provider = feDetectProvider(apiKey, keyObj.provider);
+    let attempts = 0;
+    let keyExhausted = false;
+
+    while(countCollected() < totalNeeded && attempts < MAX_ATTEMPTS && !keyExhausted){
+      if(typeof feGenAbort!=='undefined' && feGenAbort) break;
+      attempts++;
+
+      // Only ask for whatever is still missing (shrinks fast after the first pass).
+      const missingOnly = new Map();
+      tasks.forEach((t,i) => { const have = collected.get(i).length; if(have < t.count) missingOnly.set(i, t.count - have); });
+
+      const prompt = feBuildCombinedPrompt(tasks, missingOnly, isFilipinoSubject, grade, subject);
+      if(onProgress) onProgress(countCollected(), totalNeeded, attempts);
+
+      try{
+        const raw   = await feRawCall(prompt, apiKey, provider);
+        const items = feParseCombinedRaw(raw);
+        items.forEach(it => {
+          const arr = collected.get(it.t);
+          const t = tasks[it.t];
+          if(arr && t && arr.length < t.count) arr.push(it);
+        });
+
+        if(countCollected() >= totalNeeded) break;
+        if(attempts < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, 800));
+
+      } catch(e){
+        const isQuota    = e.message === 'QUOTA';
+        const isOverload = e.message === 'OVERLOAD';
+
+        if(isOverload){
+          const waitMs = Math.min(1500 * Math.pow(2, attempts - 1), 20000);
+          console.warn(`[FE combined] Server overloaded, waiting ${waitMs}ms before retry (attempt ${attempts})…`);
+          await new Promise(r => setTimeout(r, waitMs));
+          attempts = Math.max(0, attempts - 1);
+
+        } else if(isQuota){
+          markQuota(apiKey);
+          keyExhausted = true;
+          keyRotates++;
+          const nextKey = getActiveKey();
+          if(nextKey && nextKey !== apiKey){
+            const nextName = mkKeys[mkActive]?.name || 'next key';
+            feGenPause(`⚠️ Real quota hit confirmed. Rotating to "${nextName}"… resuming in 3s`);
+            await new Promise(r => setTimeout(r, 3000));
+            feGenResume();
+          } else {
+            feGenPause('🚫 All keys hit quota. Reset quotas or add a new key, then click Resume.');
+            await feWaitForResume();
+            keyRotates = 0;
+          }
+        } else if(attempts >= MAX_ATTEMPTS){
+          console.warn('feCallCombinedAPI non-quota error after max attempts:', e.message);
+          break;
+        } else {
+          console.warn('feCallCombinedAPI non-quota error, will retry:', e.message);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+    }
+  }
+
+  // Pad any still-missing items with placeholders so the total count always matches the TOS.
+  tasks.forEach((t,i) => {
+    const arr = collected.get(i);
+    while(arr.length < t.count){
+      const n = arr.length + 1;
+      arr.push({
+        t: i,
+        question: `[${t.cogShort} — ${t.lesson.topic}] Item ${n} — could not generate (check key/quota)`,
+        choices:  ['Option A', 'Option B', 'Option C', 'Option D'],
+        answer:   'A'
+      });
+    }
+  });
+
+  return collected;
 }
 
 /* ── Pause / Resume helpers for exam generation ── */
@@ -4923,17 +5168,35 @@ async function feDownloadDOCX(){
     return `<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/><w:tcBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders></w:tcPr>${EP(0)}</w:tc>`;
   };
 
+  /* Score box (top-right, auto-filled with total item count) */
+  const feScoreDesignKey = getScoreBoxStyle('fe');
+  const feScoreDesign = SCORE_BOX_DESIGNS[feScoreDesignKey] || SCORE_BOX_DESIGNS.navy;
+  const scoreBoxCellXml = () => `<w:tc><w:tcPr><w:tcW w:w="1300" w:type="dxa"/><w:vAlign w:val="center"/><w:tcBorders>
+      <w:top w:val="${feScoreDesign.docxBorder}" w:sz="8" w:color="${feScoreDesign.color}"/>
+      <w:left w:val="${feScoreDesign.docxBorder}" w:sz="8" w:color="${feScoreDesign.color}"/>
+      <w:bottom w:val="${feScoreDesign.docxBorder}" w:sz="8" w:color="${feScoreDesign.color}"/>
+      <w:right w:val="${feScoreDesign.docxBorder}" w:sz="8" w:color="${feScoreDesign.color}"/>
+    </w:tcBorders><w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="60" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>
+    ${P('SCORE',{bold:true,center:true,sz:16,after:60,color:feScoreDesign.color,font:'Franklin Gothic Medium'})}
+    <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="60" w:line="240" w:lineRule="auto"/></w:pPr>
+      <w:r><w:rPr><w:u w:val="single"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">_______</w:t></w:r>
+    </w:p>
+    <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>
+      <w:r><w:rPr><w:b/><w:color w:val="${feScoreDesign.color}"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">/ ${feExamItems.length}</w:t></w:r>
+    </w:p>
+  </w:tc>`;
+
   headerXml = `
   <w:tbl>
-    <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>
+    <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:jc w:val="center"/><w:tblBorders>
       <w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/>
       <w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/>
     </w:tblBorders></w:tblPr>
-    <w:tblGrid><w:gridCol w:w="900"/><w:gridCol w:w="10080"/><w:gridCol w:w="900"/></w:tblGrid>
+    <w:tblGrid><w:gridCol w:w="900"/><w:gridCol w:w="9680"/><w:gridCol w:w="1300"/></w:tblGrid>
     <w:tr>
       ${logoCell('L')}
       <w:tc>
-        <w:tcPr><w:tcW w:w="10080" w:type="dxa"/><w:tcBorders>
+        <w:tcPr><w:tcW w:w="9680" w:type="dxa"/><w:tcBorders>
           <w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/>
         </w:tcBorders></w:tcPr>
         ${P(school,  {bold:true,color:'002060',center:true,sz:24,after:0,font:'Franklin Gothic Medium'})}
@@ -4945,23 +5208,26 @@ async function feDownloadDOCX(){
         ${P(sub,     {bold:true,color:'002060',center:true,sz:22,after:0})}
         ${P(date,    {center:true,sz:18,after:0})}
       </w:tc>
-      ${logoCell('R')}
+      <w:tc><w:tcPr><w:tcW w:w="1300" w:type="dxa"/><w:tcBorders><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders></w:tcPr>${EP(0)}</w:tc>
+    </w:tr>
+    <w:tr>
+      <w:tc>
+        <w:tcPr><w:tcW w:w="10580" w:type="dxa"/><w:gridSpan w:val="2"/><w:tcBorders>
+          <w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/>
+        </w:tcBorders><w:vAlign w:val="center"/></w:tcPr>
+        <w:p>
+          <w:pPr><w:spacing w:before="80" w:after="80" w:line="240" w:lineRule="auto"/>
+            <w:tabs><w:tab w:val="left" w:pos="5000"/></w:tabs>
+          </w:pPr>
+          <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>
+            <w:t xml:space="preserve">Name: ____________________________________________</w:t></w:r>
+          <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:tab/>
+            <w:t xml:space="preserve">Date: _______________</w:t></w:r>
+        </w:p>
+      </w:tc>
+      ${scoreBoxCellXml()}
     </w:tr>
   </w:tbl>`;
-
-  /* Name/Date/Score line */
-  const infoLine=`
-  <w:p>
-    <w:pPr><w:spacing w:after="80" w:line="240" w:lineRule="auto"/>
-      <w:tabs><w:tab w:val="left" w:pos="5000"/><w:tab w:val="left" w:pos="8500"/></w:tabs>
-    </w:pPr>
-    <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>
-      <w:t xml:space="preserve">Name: ____________________________________________</w:t></w:r>
-    <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:tab/>
-      <w:t xml:space="preserve">Date: _______________</w:t></w:r>
-    <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:tab/>
-      <w:t xml:space="preserve">Score: ___________</w:t></w:r>
-  </w:p>`;
 
   /* Instructions */
   const instrXml=`
@@ -5079,14 +5345,27 @@ async function feDownloadDOCX(){
     <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">School Head</w:t></w:r>
   </w:p>`;
 
+  /* Parent's Signature — placed right after the exam questions, before the answer key */
+  const parentSigXml=`
+  <w:p>
+    <w:pPr><w:spacing w:before="200" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>
+    <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>
+      <w:t xml:space="preserve">___________________________________</w:t></w:r>
+  </w:p>
+  <w:p>
+    <w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>
+    <w:r><w:rPr><w:b/><w:i/><w:color w:val="AD1457"/><w:highlight w:val="yellow"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>
+      <w:t xml:space="preserve"> Parent's Signature </w:t></w:r>
+  </w:p>`;
+
   const bodyXml=`
     ${headerXml}
     ${EP(80)}
-    ${infoLine}
-    ${EP(40)}
     ${instrXml}
     ${EP(40)}
     ${itemsXml}
+    ${EP(80)}
+    ${parentSigXml}
     ${EP(120)}
     ${akXml}
     ${EP(120)}
@@ -5229,8 +5508,8 @@ function prelimHandleDrop(e){
 async function prelimHandleFiles(fileList){
   const files = Array.from(fileList).filter(f => /\.(docx|doc|pdf)$/i.test(f.name));
   if(!files.length){ toast('Please upload .docx, .doc, or .pdf files only.','te'); return; }
-  if(files.length + prelimFiles.length > 6){
-    toast('Maximum 6 files allowed. Remove some first.','te'); return;
+  if(files.length + prelimFiles.length > 10){
+    toast('Maximum 10 files allowed. Remove some first.','te'); return;
   }
   for(const file of files){
     const text = await prelimExtractDocx(file);
@@ -5724,6 +6003,8 @@ ${cogNoteEn}`;
 Ikaw ay isang guro na gumagawa ng Prelim Exam para sa ${grade} ${subject} (${quarter} Quarter).
 
 ⚠️ PINAKAMAHALAGANG TUNTUNIN: Gamitin LAMANG ang EKSAKTONG nilalaman ng mga dokumentong ibinigay sa ibaba. Huwag mag-imbento ng mga tanong mula sa iyong sariling kaalaman. LAHAT ng tanong, sagot, at word bank ay dapat hango sa mga tekstong ito.
+${prelimFiles.length > 1 ? `
+⚠️ SAKLAW NG LAHAT NG FILE (KRITIKAL): May ${prelimFiles.length} sangguniang file na ibinigay sa ibaba. HUWAG kumuha ng tanong mula sa iisang file lamang — kumuha ka ng tanong mula sa BAWAT isa sa ${prelimFiles.length} na file. Ipamahagi ang mga tanong nang PANTAY-PANTAY hangga't maaari sa lahat ng file/paksa (halimbawa, kung 3 file at 30 tanong, humigit-kumulang 10 tanong bawat file), sakop ang natatanging aralin o paksa ng bawat file. Huwag balewalain ang anumang na-upload na file.` : ''}
 
 NILALAMAN NG MGA SANGGUNIANG DOKUMENTO:
 ${combinedContext}
@@ -5743,6 +6024,8 @@ ${activeSchema}
 You are a teacher creating a Prelim Exam for ${grade} ${subject} (${quarter} Quarter).
 
 ⚠️ MOST IMPORTANT RULE: You must use ONLY the content from the reference documents provided below. Do NOT invent questions from your own knowledge. ALL questions, answers, and word bank words must come directly from the text in these files.
+${prelimFiles.length > 1 ? `
+⚠️ COVERAGE ACROSS ALL FILES (CRITICAL): There are ${prelimFiles.length} reference files provided below. Do NOT draw questions from only one file — pull questions from EVERY one of the ${prelimFiles.length} files. Distribute items as EVENLY as possible across all files/topics (e.g. with 3 files and 30 questions, aim for roughly 10 questions per file), covering each file's distinct lesson or topic. Do not ignore any uploaded file.` : ''}
 
 REFERENCE DOCUMENT CONTENT:
 ${combinedContext}
@@ -5772,9 +6055,12 @@ ${activeSchema}
       tries++;
       const missing = wanted - part.items.length;
       const ctx = combinedContext;
+      const coverageNote = prelimFiles.length > 1
+        ? (isFil ? `Tandaan: may ${prelimFiles.length} sangguniang file — huwag kumuha ng tanong mula sa iisang file lamang, ipamahagi sa lahat ng file.\n\n` : `Reminder: there are ${prelimFiles.length} reference files — do not draw items from only one file, spread them across all files.\n\n`)
+        : '';
       const topUp = isFil
-        ? `Batay sa mga sangguniang dokumento, gumawa ng eksaktong ${missing} KARAGDAGANG ${typeLabel(actualType, true)} na tanong na HINDI pa nababanggit. Iwasan ang pag-uulit.\n\nKONTEKSTO:\n${ctx}\n\nSagutin LAMANG ng valid JSON:\n${partJsonSchema(actualType,'result')}`
-        : `Based on the reference documents, create exactly ${missing} ADDITIONAL ${typeLabel(actualType, false)} items not already covered. Avoid repetition.\n\nCONTEXT:\n${ctx}\n\nRespond ONLY with valid JSON:\n${partJsonSchema(actualType,'result')}`;
+        ? `Batay sa mga sangguniang dokumento, gumawa ng eksaktong ${missing} KARAGDAGANG ${typeLabel(actualType, true)} na tanong na HINDI pa nababanggit. Iwasan ang pag-uulit.\n\n${coverageNote}KONTEKSTO:\n${ctx}\n\nSagutin LAMANG ng valid JSON:\n${partJsonSchema(actualType,'result')}`
+        : `Based on the reference documents, create exactly ${missing} ADDITIONAL ${typeLabel(actualType, false)} items not already covered. Avoid repetition.\n\n${coverageNote}CONTEXT:\n${ctx}\n\nRespond ONLY with valid JSON:\n${partJsonSchema(actualType,'result')}`;
       try{
         const raw = await prelimCallAI(topUp, apiKey);
         const extra = prelimParseJson(raw);
@@ -6194,6 +6480,9 @@ function prelimRenderPreview(){
     `;
   }
 
+  const totalPrelimItems = (part1?.items?.length||0) + (part2?.items?.length||0) + (part3?.items?.length||0);
+  const scoreBoxHtml = buildScoreBoxHtml(getScoreBoxStyle('prelim'), totalPrelimItems, isFil);
+
   document.getElementById('prelimPreviewBody').innerHTML = `
     <div style="background:linear-gradient(175deg,#EEF4FF,#fff);border:1px solid #D0DCEE;border-radius:8px;padding:14px 18px;margin-bottom:12px;text-align:center;">
       <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px;">
@@ -6211,10 +6500,12 @@ function prelimRenderPreview(){
         </div>
         ${logoImg(logoR)}
       </div>
-      <div style="display:flex;gap:20px;margin-top:6px;font-size:12px;border-top:1px solid #D0DCEE;padding-top:7px;text-align:left;">
-        <span>Name: <span style="display:inline-block;width:220px;border-bottom:1.5px solid #555;"></span></span>
-        <span>Date: <span style="display:inline-block;width:90px;border-bottom:1.5px solid #555;"></span></span>
-        <span>Score: <span style="display:inline-block;width:80px;border-bottom:1.5px solid #555;"></span></span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:6px;font-size:12px;border-top:1px solid #D0DCEE;padding-top:7px;text-align:left;">
+        <div style="display:flex;gap:20px;">
+          <span>Name: <span style="display:inline-block;width:220px;border-bottom:1.5px solid #555;"></span></span>
+          <span>Date: <span style="display:inline-block;width:90px;border-bottom:1.5px solid #555;"></span></span>
+        </div>
+        ${scoreBoxHtml}
       </div>
     </div>
     ${partSection(p1Label, rt1, part1)}
@@ -6281,7 +6572,7 @@ async function prelimDownload(){
     if(!loaded){toast('❌ Could not load docx library. Check internet connection.','te');return;}
   }
   const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle,
-          WidthType, UnderlineType, HeadingLevel, Table, TableRow, TableCell, ShadingType } = docx;
+          WidthType, UnderlineType, HeadingLevel, Table, TableRow, TableCell, ShadingType, VerticalAlign } = docx;
 
   const CM = (n) => Math.round(n * 567);
   const iFont = 'Comic Sans MS'; // Kids-friendly font for the exam body
@@ -6427,9 +6718,10 @@ async function prelimDownload(){
       });
     } else if(t==='smile_sad'||t==='check_x'||t==='heart_thunder'){
       const boxColor = icDocxColors[t];
-      items.forEach(it => {
+      items.forEach((it,i) => {
         paras.push(new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
           children:[
+            new TextRun({ text:`${i+1}. `, bold:true, size:22, font:iFont }),
             new TextRun({ text:'[      ]   ', bold:true, color:boxColor, size:22, font:iFont }),
             new TextRun({ text: it.q, size:22, font:iFont }),
           ]}));
@@ -6578,41 +6870,91 @@ async function prelimDownload(){
     });
   }
 
+  const totalItemsCount = activeDocxSections.reduce((sum,s)=> sum + ((s.part && s.part.items) ? s.part.items.length : 0), 0);
+  const scoreDesignKey = getScoreBoxStyle('prelim');
+  const scoreDesign = SCORE_BOX_DESIGNS[scoreDesignKey] || SCORE_BOX_DESIGNS.navy;
+  const DOCX_BORDER_MAP = { double:BorderStyle.DOUBLE, single:BorderStyle.SINGLE, dashed:BorderStyle.DASHED, dotted:BorderStyle.DOTTED };
+  const scoreBorder = { style: DOCX_BORDER_MAP[scoreDesign.docxBorder] || BorderStyle.DOUBLE, size: 6, color: scoreDesign.color };
+  const scoreBorders = { top:scoreBorder, bottom:scoreBorder, left:scoreBorder, right:scoreBorder };
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const noBorders = { top:noBorder, bottom:noBorder, left:noBorder, right:noBorder };
+  // Portrait score badge — label on top, writing line for the actual score in the middle,
+  // and the total item count ( / N ) below it, as requested.
+  const scoreBoxCell = new TableCell({
+    borders: scoreBorders,
+    width:{ size:1300, type:WidthType.DXA },
+    verticalAlign: VerticalAlign.CENTER,
+    margins:{ top:120, bottom:120, left:60, right:60 },
+    children:[
+      new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:60},
+        children:[new TextRun({ text: isFil?'ISKOR':'SCORE', bold:true, size:16, color:scoreDesign.color, font:'Franklin Gothic Medium' })] }),
+      new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:60},
+        children:[ blank(7) ]}),
+      new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:`/ ${totalItemsCount||0}`, bold:true, size:20, color:scoreDesign.color, font:'Franklin Gothic Medium' })] }),
+    ]
+  });
+  const schoolInfoCell = new TableCell({
+    borders: noBorders,
+    columnSpan: 2,
+    children:[
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:'UPPER KLINAN SDA SCHOOL INC', bold:true, size:28, color:'002060', font:'Franklin Gothic Medium' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:'Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato', size:20, font:'Times New Roman' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:'School ID: 409417', size:20, color:'C00000', italics:true, font:'Times New Roman' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:'\u201CWhere Children Enjoy Holistic Learning\u201D', size:20, color:'C00000', italics:true, font:'Times New Roman' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:60,after:0},
+        children:[new TextRun({ text:`${quarter} Quarter Prelim Exam`, bold:true, size:26, color:'002060', font:'Franklin Gothic Medium' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:'SY '+syVal, size:20, color:'0070C0', font:'Times New Roman' })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:subject, bold:true, size:26, color:'002060', font:'Franklin Gothic Medium' })] }),
+      ...(date ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
+        children:[new TextRun({ text:date, size:20, color:'555555', font:'Times New Roman' })] })] : []),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:40},
+        children:[new TextRun({ text:grade||'', size:20, color:'555555', italics:true, font:'Times New Roman' })] }),
+    ]
+  });
+  const nameDateCell = new TableCell({
+    borders: noBorders,
+    verticalAlign: VerticalAlign.CENTER,
+    children:[
+      new Paragraph({ spacing:{before:80, after:80},
+        children:[
+          new TextRun({ text:'Name: ', bold:true, size:22, font:iFont }),
+          blank(42),
+          sp(4),
+          new TextRun({ text:'  Date:', bold:true, size:22, font:iFont }),
+          blank(12),
+        ]}),
+    ]
+  });
+  const headerTable = new Table({
+    width:{ size:9100, type:WidthType.DXA },
+    alignment: AlignmentType.CENTER,
+    columnWidths:[7800,1300],
+    rows:[
+      new TableRow({ children:[schoolInfoCell] }),
+      new TableRow({ children:[nameDateCell, scoreBoxCell] }),
+    ]
+  });
+
   const children = [
     // ── Header ──
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
-      children:[new TextRun({ text:'UPPER KLINAN SDA SCHOOL INC', bold:true, size:28, color:'002060', font:'Franklin Gothic Medium' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
-      children:[new TextRun({ text:'Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato', size:20, font:'Times New Roman' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
-      children:[new TextRun({ text:'School ID: 409417', size:20, color:'C00000', italics:true, font:'Times New Roman' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
-      children:[new TextRun({ text:'\u201CWhere Children Enjoy Holistic Learning\u201D', size:20, color:'C00000', italics:true, font:'Times New Roman' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:60,after:0},
-      children:[new TextRun({ text:`${quarter} Quarter Prelim Exam`, bold:true, size:26, color:'002060', font:'Franklin Gothic Medium' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
-      children:[new TextRun({ text:'SY '+syVal, size:20, color:'0070C0', font:'Times New Roman' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
-      children:[new TextRun({ text:subject, bold:true, size:26, color:'002060', font:'Franklin Gothic Medium' })] }),
-    ...(date ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:0},
-      children:[new TextRun({ text:date, size:20, color:'555555', font:'Times New Roman' })] })] : []),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:40},
-      children:[new TextRun({ text:grade||'', size:20, color:'555555', italics:true, font:'Times New Roman' })] }),
-    new Paragraph({ spacing:{before:80, after:80},
-      children:[
-        new TextRun({ text:'Name: ', bold:true, size:22, font:iFont }),
-        blank(42),
-        sp(4),
-        new TextRun({ text:'  Date:', bold:true, size:22, font:iFont }),
-        blank(12),
-        sp(2),
-        new TextRun({ text:'  Score:', bold:true, size:22, font:iFont }),
-        blank(12),
-      ]}),
+    headerTable,
     rule(),
 
     // ── Active parts only (skips null/none parts) ──
     ...activeDocxSections.flatMap(s => [...buildPartDocx(s.type, s.part, s.label, s.pts, isFil), rule()]),
+
+    // ── Parent's Signature (colorful highlight + signing line) ── right after the exam, before the answer key
+    new Paragraph({ spacing:{before:200,after:0},
+      children:[ new TextRun({ text:'___________________________________', size:22, font:iFont }) ] }),
+    new Paragraph({ spacing:{before:0,after:200},
+      children:[ new TextRun({ text: isFil?" Lagda ng Magulang ":" Parent's Signature ", bold:true, italics:true, size:22, color:'AD1457', highlight:'yellow', font:iFont }) ] }),
 
     // ── ANSWER KEY ──
     bodyPar([new TextRun({ text: isFil?'SUSI SA PAGWAWASTO (Answer Key)':'ANSWER KEY', bold:true, size:26, font:'Franklin Gothic Medium', color:'2E7D32' })], 80, 40),
@@ -7022,7 +7364,7 @@ async function prelimGeneratePartIV(){
   const lang = isFil ? 'FILIPINO (Tagalog)' : 'ENGLISH';
   const prompt = `You are a teacher creating Test IV — Multiple Choice (Dropdown) for ${grade} ${subject} ${quarter} Quarter Prelim Exam.
 Read EVERY one of the ${prelimFiles.length} reference files below. Do not skip any file. Create exactly ${mcCount} multiple-choice items in ${lang}.
-Each item has 4 options. The "answer" field MUST be the EXACT verbatim string of the correct option (case-sensitive, trimmed). Avoid lazy distractors like "All of the above", "None of the above", "Both A and B", "Neither A nor B". No duplicate options.
+${prelimFiles.length > 1 ? `COVERAGE ACROSS ALL FILES (CRITICAL): Do NOT base most or all questions on just one file — distribute the ${mcCount} items as evenly as possible across all ${prelimFiles.length} files/topics, covering each file's distinct content.\n` : ''}Each item has 4 options. The "answer" field MUST be the EXACT verbatim string of the correct option (case-sensitive, trimmed). Avoid lazy distractors like "All of the above", "None of the above", "Both A and B", "Neither A nor B". No duplicate options.
 
 REFERENCE FILES:
 ${combinedContext}
