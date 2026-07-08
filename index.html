@@ -4138,6 +4138,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 const FE_SAVE_KEY = 'lp_final_exam_v1';
 let feExamItems = [];   // [{num, competency, topic, question, choices:[A,B,C,D], answer}]
+
+/* Re-order a multiple-choice item's options alphabetically (A→D by option text)
+   and remap the answer letter so it still points to the correct option. */
+function feAlphabetizeChoices(choices, answerLetter){
+  const LETTERS = 'ABCDEFGHIJ';
+  if(!Array.isArray(choices) || choices.length < 2) return { choices, answer: answerLetter };
+  const idx = LETTERS.indexOf(String(answerLetter || 'A').toUpperCase().charAt(0));
+  const correctText = choices[idx] !== undefined ? choices[idx] : choices[0];
+  const sorted = [...choices].sort((a, b) =>
+    String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base', numeric: true }));
+  let newIdx = sorted.indexOf(correctText);
+  if(newIdx === -1) newIdx = 0;
+  return { choices: sorted, answer: LETTERS.charAt(newIdx) };
+}
 let feGenAbort  = false;
 let feSaveTimer = null;
 
@@ -4176,7 +4190,11 @@ function feLoadState(){
     if(d.prepBy) document.getElementById('feMPrepBy').value = d.prepBy;
     if(d.checkBy)document.getElementById('feMCheckBy').value= d.checkBy;
     if(d.items && d.items.length){
-      feExamItems = d.items;
+      feExamItems = d.items.map(it => {
+        if(!Array.isArray(it.choices) || it.choices.length < 2) return it;
+        const { choices, answer } = feAlphabetizeChoices(it.choices, it.answer);
+        return { ...it, choices, answer };
+      });
       feRenderPreview();
     }
     if(d.logoLeft)  feRestoreLogo('feLogoLeft','feLogoLeftImg',d.logoLeft);
@@ -4390,6 +4408,8 @@ async function feGenerate(){
     tasks.forEach((task, ti) => {
       const items = itemsByTask.get(ti) || [];
       items.forEach(it => {
+        const { choices: abcChoices, answer: abcAnswer } =
+          feAlphabetizeChoices(it.choices, String(it.answer || 'A').toUpperCase().charAt(0));
         feExamItems.push({
           num:        globalNum++,
           topic:      task.lesson.topic,
@@ -4397,8 +4417,8 @@ async function feGenerate(){
           cogLabel:   task.cogLabel,
           cogIdx:     task.cogIdx,
           question:   it.question,
-          choices:    it.choices,
-          answer:     String(it.answer||'A').toUpperCase().charAt(0)
+          choices:    abcChoices,
+          answer:     abcAnswer
         });
       });
     });
@@ -4640,6 +4660,38 @@ function feStripChoiceLabel(s){
   return String(s||'').trim().replace(/^\(?[A-Da-d]\)?[.):]\s+/, '').trim();
 }
 
+/* Work out which choice is actually correct, however the AI phrased "answer".
+   The old logic assumed "answer" was always a single clean letter (A-D) and just
+   stripped stray characters — but when the AI instead echoed the full answer TEXT
+   (which models do fairly often despite instructions), that stripping mangled the
+   text into garbage and silently produced a wrong answer key. This checks, in order:
+   1) a clean single letter (A-D, optionally with punctuation like "A." or "(A)")
+   2) the answer text matching one of the raw choices exactly (case/whitespace-insensitive)
+   3) a loose substring match as a last resort
+   4) falls back to "A" only if nothing else matches. */
+function feResolveAnswerLetter(rawAnswer, rawChoices){
+  const LETTERS = 'ABCD';
+  const ans = String(rawAnswer == null ? '' : rawAnswer).trim();
+  const choices = Array.isArray(rawChoices) ? rawChoices : [];
+
+  const letterMatch = ans.match(/^\(?\s*([A-Da-d])\s*\)?[.:)]?$/);
+  if(letterMatch) return letterMatch[1].toUpperCase();
+
+  const norm = s => feStripChoiceLabel(s).toLowerCase().replace(/\s+/g,' ').trim();
+  const cleanAns = norm(ans);
+  if(cleanAns){
+    const exactIdx = choices.findIndex(c => norm(c) === cleanAns);
+    if(exactIdx !== -1) return LETTERS.charAt(exactIdx) || 'A';
+
+    const looseIdx = choices.findIndex(c => {
+      const cc = norm(c);
+      return cc && (cc.includes(cleanAns) || cleanAns.includes(cc));
+    });
+    if(looseIdx !== -1) return LETTERS.charAt(looseIdx) || 'A';
+  }
+  return 'A';
+}
+
 /* Parse JSON array from raw AI text */
 function feParseItems(raw){
   if(!raw) return [];
@@ -4657,13 +4709,16 @@ function feParseItems(raw){
     if(!Array.isArray(arr)) return [];
     return arr
       .filter(it => it && typeof it.question==='string' && it.question.trim() && Array.isArray(it.choices))
-      .map(it=>({
-        question: it.question.trim(),
-        choices:  it.choices.length===4
-          ? it.choices.map(c=>feStripChoiceLabel(c)||'—')
-          : [...it.choices.map(c=>feStripChoiceLabel(c)), 'Option C','Option D'].slice(0,4),
-        answer: String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A')
-      }));
+      .map(it=>{
+        const rawChoices = it.choices;
+        return {
+          question: it.question.trim(),
+          choices:  rawChoices.length===4
+            ? rawChoices.map(c=>feStripChoiceLabel(c)||'—')
+            : [...rawChoices.map(c=>feStripChoiceLabel(c)), 'Option C','Option D'].slice(0,4),
+          answer: feResolveAnswerLetter(it.answer, rawChoices)
+        };
+      });
   }catch(e){ return []; }
 }
 
@@ -4852,14 +4907,17 @@ function feParseCombinedRaw(raw){
     if(!Array.isArray(arr)) return [];
     return arr
       .filter(it => it && typeof it.question==='string' && it.question.trim() && Array.isArray(it.choices) && Number.isInteger(it.t))
-      .map(it => ({
-        t: it.t,
-        question: it.question.trim(),
-        choices:  it.choices.length===4
-          ? it.choices.map(c=>feStripChoiceLabel(c)||'—')
-          : [...it.choices.map(c=>feStripChoiceLabel(c)), 'Option C','Option D'].slice(0,4),
-        answer: String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A')
-      }));
+      .map(it => {
+        const rawChoices = it.choices;
+        return {
+          t: it.t,
+          question: it.question.trim(),
+          choices:  rawChoices.length===4
+            ? rawChoices.map(c=>feStripChoiceLabel(c)||'—')
+            : [...rawChoices.map(c=>feStripChoiceLabel(c)), 'Option C','Option D'].slice(0,4),
+          answer: feResolveAnswerLetter(it.answer, rawChoices)
+        };
+      });
   }catch(e){ return []; }
 }
 
@@ -5071,9 +5129,14 @@ function feRenderPreview(){
       </div>`;
       html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 16px;
         margin-left:38px;margin-top:3px;font-size:12.5px;">`;
-      it.choices.forEach((ch, chi) => {
-        html += `<div><span style="font-weight:700;">${choiceLetters[chi]}.</span> ${ch}</div>`;
-      });
+      const half = Math.ceil(it.choices.length / 2);
+      for(let r = 0; r < half; r++){
+        const li = r, ri = r + half;
+        html += `<div><span style="font-weight:700;">${choiceLetters[li]}.</span> ${it.choices[li] ?? ''}</div>`;
+        html += it.choices[ri] !== undefined
+          ? `<div><span style="font-weight:700;">${choiceLetters[ri]}.</span> ${it.choices[ri]}</div>`
+          : `<div></div>`;
+      }
       html += `</div></div>`;
     });
 
