@@ -4692,6 +4692,21 @@ function feResolveAnswerLetter(rawAnswer, rawChoices){
   return 'A';
 }
 
+/* Reject a multiple-choice item outright if two of its options are identical
+   (or empty) — e.g. A and B both saying "Chemical change keeps the original
+   makeup". Rather than trying to patch a broken item, we drop it here so the
+   existing retry loop naturally requests a fresh replacement instead. */
+function feChoicesAreValid(choices){
+  if(!Array.isArray(choices) || choices.length < 2) return true;
+  const seen = new Set();
+  for(const c of choices){
+    const norm = String(c || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if(!norm || seen.has(norm)) return false;
+    seen.add(norm);
+  }
+  return true;
+}
+
 /* Parse JSON array from raw AI text */
 function feParseItems(raw){
   if(!raw) return [];
@@ -4760,7 +4775,7 @@ async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipi
       try{
         const raw   = await feRawCall(retryPrompt, apiKey, provider);
         const items = feParseItems(raw);
-        items.forEach(it => { if(collected.length < needed) collected.push(it); });
+        items.forEach(it => { if(collected.length < needed && feChoicesAreValid(it.choices)) collected.push(it); });
 
         if(collected.length >= needed) break;
 
@@ -4963,7 +4978,7 @@ async function feCallCombinedAPI(tasks, isFilipinoSubject, grade, subject, onPro
         items.forEach(it => {
           const arr = collected.get(it.t);
           const t = tasks[it.t];
-          if(arr && t && arr.length < t.count) arr.push(it);
+          if(arr && t && arr.length < t.count && feChoicesAreValid(it.choices)) arr.push(it);
         });
 
         if(countCollected() >= totalNeeded) break;
