@@ -378,16 +378,9 @@ function buildSummativePrompt(row, itemCount, testTypes, customAnswersMap) {
       'Matching Type': 'Generate exactly ' + n + ' matching pairs. For EACH item: prompt = Column A entry (term or question), columnB = the correct Column B match (definition or answer). Also copy the Column B text into answer. Never merge both columns into one field.',
       'Multiple Choice': 'Write ' + n + ' multiple-choice questions. Each item MUST include a "choices" array of exactly 4 short answer options (plain option text only \u2014 do NOT prefix them with A/B/C/D, those letters are added automatically). Exactly ONE option is correct; the other 3 must be plausible but clearly wrong distractors appropriate for the grade level. "answer" must be an EXACT copy (character-for-character) of the correct option\'s text as it appears in the choices array.',
       'Word Bank': 'Include a top-level wordBank array with ' + n + ' answer words plus 3 extra distractors. Each item prompt is a sentence with _______ for the blank. answer is the correct word from the bank.',
-      'Identification': 'Write ' + n + ' clue sentences or descriptions. answer is the specific word, name, or short phrase (1-4 words) that identifies what is described.',
       'Enumeration': 'Write ' + n + ' enumeration prompts asking pupils to list/enumerate multiple related items, parts, examples, causes, or steps (state exactly how many to list, e.g. "List the 3 branches of the Philippine government."). answer contains the complete expected list, items separated by commas.',
       [CUSTOM_ANSWER_TYPE]: 'Write ' + n + ' statements or questions whose correct answer is EXACTLY one of these teacher-provided answers: ' + (customAnswers && customAnswers.length ? customAnswers.map(a => '"' + a + '"').join(', ') : '(no answers provided)') + '. ACCURACY IS CRITICAL: only write items whose TRUE, factually/grammatically correct answer genuinely and unambiguously matches ONE of the listed answers above \u2014 never force-fit, guess, or pick the closest option when the real correct answer is something else NOT in the list. If the given answers are a closed set of categories (e.g. specific grammar/subject categories), every example, word, or scenario you choose must actually belong to one of those exact categories; do NOT write an item about a word or concept that truly belongs to a different category outside the given list. Distribute the items as evenly as possible across all the given answers. Every item under this part must use "format":"' + t + '" exactly (do not mix it up with any other custom-answer part in this same test). The "answer" field must copy the chosen answer exactly (character-for-character) as given.',
-      'Fill in the Blanks': 'Write ' + n + ' sentences each with exactly one blank (_______). answer is the word or short phrase that correctly fills the blank.',
-      'Short Answer': 'Write ' + n + ' open-ended questions. answer contains a model answer in 1-2 sentences.',
       'Essay / Extended Response': 'Write ' + n + ' essay prompts suited to elementary level. answer contains a model answer outline in 2-4 sentences.',
-      'Performance Task': 'Write ' + n + ' task instructions with observable criteria. answer describes the expected output.',
-      'Problem Solving': 'Write ' + n + ' problems with clear steps. answer shows the correct solution with working.',
-      'Oral Recitation': 'Write ' + n + ' prompts for oral response. answer contains the expected spoken response.',
-      'Practical Test': 'Write ' + n + ' skill demonstration instructions. answer describes the correct procedure.',
     };
     return '  \u2022 "' + t + '": ' + (hints[baseType] || ('Exactly ' + n + ' items. Follow standard format.'));
   }).join('\n');
@@ -837,6 +830,16 @@ function exportSummativeDOCX(i) {
     grouped[fmt].push(it);
   });
   let itemsBlock = '';
+  // Per-section correct-letter lookup for Matching Type, keyed by [format][localIndex].
+  // Populated while rendering the item body, then read again when rendering the answer key
+  // further below so the key always matches whatever letter was printed on the exam.
+  const matchLetterMap = {};
+  // Excel-style column letters: A, B, ... Z, AA, AB, ... — supports any item count.
+  const letterFor = (idx) => {
+    let s = '', n = idx;
+    do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+    return s;
+  };
   Object.keys(grouped).forEach(fmt => {
     if (!grouped[fmt].length) return;
     // Section header
@@ -844,14 +847,14 @@ function exportSummativeDOCX(i) {
 
     if (fmt === 'Multiple Choice') {
       // --- Render question + choices in a compact 2-column layout: A/C on one line, B/D on the next ---
-      const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+      const mcLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
       const bdrNone = `<w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/>`;
       const mcCell = (txt) =>
         `<w:tc><w:tcPr><w:tcW w:w="4320" w:type="dxa"/><w:tcBorders>${bdrNone}</w:tcBorders></w:tcPr>
           <w:p><w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/><w:rFonts w:val="Arial"/></w:rPr>
           <w:t xml:space="preserve">${x(txt)}</w:t></w:r></w:p></w:tc>`;
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt || ''}`, { sz: 20 });
+      grouped[fmt].forEach((it, li) => {
+        itemsBlock += para(`${li + 1}. ${it.prompt || ''}`, { sz: 20 });
         const choices = Array.isArray(it.choices) ? it.choices : [];
         if (choices.length === 4) {
           // Column-major fill: left column = A,B (top-bottom); right column = C,D (top-bottom)
@@ -860,21 +863,21 @@ function exportSummativeDOCX(i) {
           for (let r = 0; r < 2; r++) {
             const leftIdx = r;
             const rightIdx = r + 2;
-            const leftTxt = `${letters[leftIdx] || ''}. ${choices[leftIdx] || ''}`;
-            const rightTxt = `${letters[rightIdx] || ''}. ${choices[rightIdx] || ''}`;
+            const leftTxt = `${mcLetters[leftIdx] || ''}. ${choices[leftIdx] || ''}`;
+            const rightTxt = `${mcLetters[rightIdx] || ''}. ${choices[rightIdx] || ''}`;
             tbl += `<w:tr>${mcCell(leftTxt)}${mcCell(rightTxt)}</w:tr>`;
           }
           tbl += `</w:tbl>`;
           itemsBlock += tbl;
         } else {
           choices.forEach((c, ci) => {
-            itemsBlock += para(`      ${letters[ci] || ''}. ${c}`, { sz: 20 });
+            itemsBlock += para(`      ${mcLetters[ci] || ''}. ${c}`, { sz: 20 });
           });
         }
       });
 
     } else if (fmt === 'Matching Type') {
-      // --- Render as a proper two-column table ---
+      // --- Render as a proper two-column table: Column A numbered 1..N, Column B lettered A..N (shuffled) ---
       const bdrM = `<w:top w:val="single" w:sz="6" w:color="336699"/>
                     <w:left w:val="single" w:sz="6" w:color="336699"/>
                     <w:bottom w:val="single" w:sz="6" w:color="336699"/>
@@ -894,19 +897,28 @@ function exportSummativeDOCX(i) {
       let tblXml = `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>
         <w:tblBorders>${bdrM}</w:tblBorders></w:tblPr>
         <w:tr>${headerCell('Column A')}${headerCell('Column B')}</w:tr>`;
-      // Collect all unique Column B options (shuffled as answer choices)
-      const colBOptions = grouped[fmt].map(it => it.columnB || it.answer || '').filter(Boolean);
-      // Shuffle for display
-      const shuffled = [...colBOptions].sort(() => Math.random() - 0.5);
-      grouped[fmt].forEach((it, idx) => {
-        const colA = `${it.number}. ${it.prompt || ''}`;
-        const colB = shuffled[idx] !== undefined ? shuffled[idx] : (colBOptions[idx] || '');
+      const mItems = grouped[fmt];
+      const n = mItems.length;
+      // Shuffle a row-order for Column B so definitions don't line up with their terms.
+      const order = mItems.map((_, i) => i);
+      for (let k = order.length - 1; k > 0; k--) {
+        const j = Math.floor(Math.random() * (k + 1));
+        [order[k], order[j]] = [order[j], order[k]];
+      }
+      // rowLetterForOriginalIndex[originalItemIdx] = the letter its correct match ended up under.
+      const rowLetterForOriginalIndex = new Array(n);
+      order.forEach((origIdx, rowIdx) => { rowLetterForOriginalIndex[origIdx] = letterFor(rowIdx); });
+      mItems.forEach((it, idx) => {
+        const colA = `${idx + 1}. ${it.prompt || ''}`;
+        const bText = mItems[order[idx]].columnB || mItems[order[idx]].answer || '';
+        const colB = `${letterFor(idx)}. ${bText}`;
         tblXml += `<w:tr>${dataCell(colA)}${dataCell(colB)}</w:tr>`;
       });
       tblXml += `</w:tbl>`;
       itemsBlock += tblXml;
+      matchLetterMap[fmt] = rowLetterForOriginalIndex;
       // Answer line space
-      itemsBlock += para('Write your answer on the line before each number in Column A.', { color: '555555', sz: 18 });
+      itemsBlock += para('Write the LETTER of the correct match from Column B on the line before each number in Column A.', { color: '555555', sz: 18 });
 
     } else if (fmt === 'Word Bank') {
       // --- Render Word Bank as a shaded box table ---
@@ -952,19 +964,19 @@ function exportSummativeDOCX(i) {
         itemsBlock += '<w:p/>';
       }
       // Render items normally
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
+      grouped[fmt].forEach((it, li) => {
+        itemsBlock += para(`${li + 1}. ${it.prompt}`, { sz: 20 });
       });
 
     } else if (fmt === 'True or False (Write the Correct Answer)') {
       itemsBlock += para('Write TRUE if the statement is correct. If FALSE, write the correct answer on the line.', { color: '555555', sz: 18 });
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
+      grouped[fmt].forEach((it, li) => {
+        itemsBlock += para(`${li + 1}. ${it.prompt}`, { sz: 20 });
       });
     } else {
       // --- All other types: plain numbered list ---
-      grouped[fmt].forEach(it => {
-        itemsBlock += para(`${it.number}. ${it.prompt}`, { sz: 20 });
+      grouped[fmt].forEach((it, li) => {
+        itemsBlock += para(`${li + 1}. ${it.prompt}`, { sz: 20 });
       });
     }
 
@@ -1022,16 +1034,19 @@ function exportSummativeDOCX(i) {
     Object.keys(grouped).forEach(fmt => {
       if (!grouped[fmt].length) return;
       akBlock += para(fmt + ':', { bold: true, color: 'E65100', sz: 18 });
-      grouped[fmt].forEach(it => {
+      grouped[fmt].forEach((it, li) => {
         const q = String(it.prompt || '').trim();
         const qShort = q.length > 90 ? q.slice(0, 87) + '\u2026' : q;
         let ansDisplay = it.answer || '\u2014';
         if (Array.isArray(it.choices) && it.choices.length) {
-          const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+          const mcLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
           const ci = it.choices.findIndex(c => String(c).trim().toLowerCase() === String(it.answer || '').trim().toLowerCase());
-          if (ci !== -1) ansDisplay = `${letters[ci] || ''}. ${it.answer}`;
+          if (ci !== -1) ansDisplay = `${mcLetters[ci] || ''}. ${it.answer}`;
+        } else if (matchLetterMap[fmt]) {
+          const letter = matchLetterMap[fmt][li] || '';
+          ansDisplay = `${letter}${letter ? '. ' : ''}${it.answer || it.columnB || ''}`;
         }
-        akBlock += para(it.number + '. ' + (qShort ? x(qShort) + '  \u2014  ' : '') + x(ansDisplay), { sz: 18 });
+        akBlock += para((li + 1) + '. ' + (qShort ? x(qShort) + '  \u2014  ' : '') + x(ansDisplay), { sz: 18 });
       });
       akBlock += '<w:p/>';
     });

@@ -33,15 +33,8 @@ const SUMMATIVE_TYPES = [
   'Multiple Choice',
   'Matching Type',
   'Word Bank',
-  'Identification',
   'Enumeration',
-  'Fill in the Blanks',
-  'Short Answer',
   'Essay / Extended Response',
-  'Performance Task',
-  'Problem Solving',
-  'Oral Recitation',
-  'Practical Test',
   CUSTOM_ANSWER_TYPE,
 ];
 
