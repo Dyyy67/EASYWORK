@@ -272,8 +272,7 @@ Rules:
   try {
     gstat.textContent = 'Generating Part I — True or False…';
     gfill.style.width = '25%';
-    const raw1 = await prelimCallAI(prompt1, apiKey);
-    part1 = JSON.parse(raw1.replace(/```json|```/g,'').trim());
+    part1 = await prelimGenerateOnePart(prompt1, 'Part I');
 
     gstat.textContent = 'Generating Part II — Word Bank…';
     gfill.style.width = '55%';
@@ -318,8 +317,8 @@ ${langNote}
   ]
 }`;
 
-    const raw2 = await prelimCallAI(prompt2, apiKey);
-    part2 = JSON.parse(raw2.replace(/```json|```/g,'').trim());
+    const raw2 = await prelimGenerateOnePart(prompt2, 'Part II');
+    part2 = raw2;
 
     gstat.textContent = 'Generating Part III — Essay…';
     gfill.style.width = '80%';
@@ -360,8 +359,8 @@ ${langNote}
   ]
 }`;
 
-    const raw3 = await prelimCallAI(prompt3, apiKey);
-    part3 = JSON.parse(raw3.replace(/```json|```/g,'').trim());
+    const raw3 = await prelimGenerateOnePart(prompt3, 'Part III');
+    part3 = raw3;
 
     gfill.style.width = '100%';
     gstat.textContent = '✅ Done!';
@@ -372,15 +371,44 @@ ${langNote}
     toast('✅ Prelim Exam generated successfully!','ts');
   } catch(e){
     console.error(e);
-    toast('❌ Error generating prelim exam: ' + e.message,'te');
-    gstat.textContent = '❌ Error: ' + e.message;
+    if(e.message === 'QUOTA'){
+      toast('🚫 All API keys hit their quota. Add a new key, or wait a bit and reset quotas in the API Key Manager, then try again.','te');
+      gstat.textContent = '🚫 All keys hit quota — add/reset a key and try again.';
+    } else if(e.message === 'NO_KEY'){
+      toast('⚠️ No usable API key left. Add or reset one in the API Key Manager.','te');
+      gstat.textContent = '⚠️ No usable API key.';
+    } else {
+      toast('❌ Error generating prelim exam: ' + e.message,'te');
+      gstat.textContent = '❌ Error: ' + e.message;
+    }
   }
 
   genBtn.disabled = false;
   genBtn.textContent = '🤖 Generate Prelim Exam';
 }
 
-/* ── AI call for prelim (uses active provider) ── */
+/* ── AI call for prelim (uses active provider) ──
+   Detects REAL quota/rate-limit signals (HTTP 429 or documented quota codes)
+   and throws Error('QUOTA') so the caller can rotate to the next key —
+   matching how the Final Exam and Lesson Plan generators already behave.
+   Any other failure throws a normal Error with the provider's message. ── */
+function prelimIsRealQuota(status, errBody){
+  if(status === 429) return true;
+  const code = String(errBody?.error?.code || errBody?.error?.type || '').toLowerCase();
+  const msg  = String(errBody?.error?.message || errBody?.message || '').toLowerCase();
+  return (
+    code.includes('rate_limit_exceeded') ||
+    code.includes('insufficient_quota') ||
+    code.includes('quota_exceeded') ||
+    msg.includes('rate limit exceeded') ||
+    msg.includes('insufficient_quota') ||
+    msg.includes('you exceeded your current quota') ||
+    msg.includes('requests per minute') ||
+    msg.includes('requests per day') ||
+    msg.includes('tokens per minute') ||
+    msg.includes('too many requests')
+  );
+}
 async function prelimCallAI(prompt, apiKey){
   const keyObj = mkKeys[mkActive] || {};
   const provider = feDetectProvider(apiKey, keyObj.provider);
@@ -392,33 +420,33 @@ async function prelimCallAI(prompt, apiKey){
       : 'https://api.openai.com/v1/chat/completions';
     const model = provider==='groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
     const r = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model, max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model, max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
+    if(!r.ok){ const e=await r.json().catch(()=>({})); if(prelimIsRealQuota(r.status,e)) throw new Error('QUOTA'); throw new Error(e.error?.message||'HTTP '+r.status); }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'mistral'){
     const r = await fetch('https://api.mistral.ai/v1/chat/completions',{ method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'mistral-small-latest', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'mistral-small-latest', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.message||e.error?.message||'HTTP '+r.status); }
+    if(!r.ok){ const e=await r.json().catch(()=>({})); if(prelimIsRealQuota(r.status,e)) throw new Error('QUOTA'); throw new Error(e.message||e.error?.message||'HTTP '+r.status); }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'deepseek'){
     const r = await fetch('https://api.deepseek.com/v1/chat/completions',{ method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'deepseek-chat', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'deepseek-chat', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
+    if(!r.ok){ const e=await r.json().catch(()=>({})); if(prelimIsRealQuota(r.status,e)) throw new Error('QUOTA'); throw new Error(e.error?.message||'HTTP '+r.status); }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else if(provider === 'cohere'){
     const r = await fetch('https://api.cohere.com/v2/chat',{ method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'command-r-plus', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'command-r-plus', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.message||'HTTP '+r.status); }
+    if(!r.ok){ const e=await r.json().catch(()=>({})); if(prelimIsRealQuota(r.status,e)) throw new Error('QUOTA'); throw new Error(e.message||'HTTP '+r.status); }
     const d=await r.json(); return d.message?.content?.[0]?.text||'';
 
   } else if(provider === 'openrouter'){
@@ -427,7 +455,13 @@ async function prelimCallAI(prompt, apiKey){
         'HTTP-Referer':'https://localhost','X-Title':'Prelim Exam Generator'},
       body:JSON.stringify({ model:'openrouter/free', max_tokens:2048, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      const raw = e.error?.metadata?.raw;
+      const inner = raw ? (() => { try { return JSON.parse(raw); } catch(_){ return null; } })() : null;
+      if(prelimIsRealQuota(r.status, inner||e)) throw new Error('QUOTA');
+      throw new Error(inner?.error?.message || e.error?.message || 'HTTP '+r.status);
+    }
     const d=await r.json(); return d.choices?.[0]?.message?.content||'';
 
   } else {
@@ -435,11 +469,46 @@ async function prelimCallAI(prompt, apiKey){
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ contents:[{parts:[{text:SYS+'\n\n'+prompt}]}],
-        generationConfig:{temperature:0.7,maxOutputTokens:2048,responseMimeType:'application/json'} }) });
-    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+r.status); }
+        generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'} }) });
+    if(!r.ok){ const e=await r.json().catch(()=>({})); if(prelimIsRealQuota(r.status,e)) throw new Error('QUOTA'); throw new Error(e.error?.message||'HTTP '+r.status); }
     const d=await r.json();
     try{ return d.candidates[0].content.parts[0].text||''; }
     catch(_){ throw new Error('Unexpected Gemini response'); }
+  }
+}
+
+/* ── Generate one prelim part with automatic key-rotation on real quota hits,
+   and a couple of retries (with a short backoff) on transient/malformed-JSON
+   errors. Uses the shared parseAIJson() repair pass — same one the Lesson
+   Plan and Summative generators use — instead of a bare JSON.parse, so a
+   stray trailing comma or smart-quote from the AI no longer kills the whole
+   generation with a raw "Unexpected token" JSON error. ── */
+async function prelimGenerateOnePart(prompt, label){
+  const maxContentAttempts = 3;
+  const maxKeyRotates = Math.max(1, mkKeys.length);
+  let keyRotates = 0;
+  let contentAttempts = 0;
+
+  while(true){
+    const apiKey = getActiveKey();
+    if(!apiKey) throw new Error('NO_KEY');
+    try{
+      const raw = await prelimCallAI(prompt, apiKey);
+      return parseAIJson(raw);
+    } catch(e){
+      if(e.message === 'QUOTA'){
+        const rotated = markQuota(apiKey);
+        keyRotates++;
+        if(!rotated || keyRotates > maxKeyRotates){
+          throw new Error('QUOTA');
+        }
+        toast(`🔄 Quota hit on ${label} — switching to the next key…`, 'ti');
+        continue; // try again immediately with the newly-active key
+      }
+      contentAttempts++;
+      if(contentAttempts >= maxContentAttempts) throw e;
+      await new Promise(r => setTimeout(r, 900 * contentAttempts));
+    }
   }
 }
 
