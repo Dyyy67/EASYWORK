@@ -596,192 +596,162 @@ function prelimToggleAnsKey(){
   btn.textContent    = show ? '🙈 Hide Answer Key' : '👁 Show Answer Key';
 }
 
-/* ── DOCX Download — matches Bible 4 format exactly ── */
+/* ── DOCX Download ──
+   Rewritten to build the file the SAME reliable way every other export in
+   this app does (Lesson Plan, Summative, TOS, Final Exam): hand-written
+   WordprocessingML XML wrapped in a Blob, no external library required.
+   The previous version depended on loading the third-party "docx" npm
+   package from a CDN at click-time — if that script failed to load (network
+   hiccup, ad-blocker, CSP, CDN outage) the whole function threw BEFORE
+   reaching its own try/catch, so the button did nothing and no error ever
+   reached the user. Removing that dependency fixes the silent failure. ── */
 async function prelimDownload(){
   if(!prelimResult){ toast('Generate the exam first.','te'); return; }
 
-  const { part1, part2, part3, subject, grade, quarter, isFil, school } = prelimResult;
-  const prepBy = document.getElementById('prepBy')?.value || '';
+  try {
 
-  // Load docx.js
-  if(typeof docx === 'undefined'){
-    await new Promise((res,rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js';
-      s.onload=res; s.onerror=rej; document.head.appendChild(s);
-    });
-  }
-  const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle,
-          WidthType, UnderlineType, HeadingLevel } = docx;
+  const { part1: part1raw, part2: part2raw, part3: part3raw, subject, grade, quarter, isFil } = prelimResult;
+  const part1 = part1raw || { items: [] };
+  const part2 = part2raw || { items: [], wordBank: [] };
+  const part3 = part3raw || { items: [] };
 
-  const CM = (n) => Math.round(n * 567); // cm to DXA (1cm ≈ 567 DXA)
-  const iFont = 'Times New Roman';
+  const x = s => String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-  const blank = (len=40) => new TextRun({ text: '_'.repeat(len), underline:{ type: UnderlineType.SINGLE } });
-  const sp = (n=1) => new TextRun({ text: ' '.repeat(n) });
+  const para = (text, opts = {}) => {
+    const { bold = false, italic = false, color = '', center = false, sz = 22 } = opts;
+    return `<w:p><w:pPr>${center ? '<w:jc w:val="center"/>' : ''}</w:pPr>
+      <w:r><w:rPr>${bold ? '<w:b/>' : ''}${italic ? '<w:i/>' : ''}${color ? `<w:color w:val="${color}"/>` : ''}
+      <w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/><w:rFonts w:val="Times New Roman"/></w:rPr>
+      <w:t xml:space="preserve">${x(text)}</w:t></w:r></w:p>`;
+  };
 
-  const hdr = (txt, sz=24, bold=true, align=AlignmentType.CENTER) =>
-    new Paragraph({ alignment: align, spacing:{ after:0, before:0 },
-      children:[new TextRun({ text:txt, bold, size:sz, font:iFont })] });
+  // Two-run paragraph (label in bold + value in italics), used for the "Story:" lines.
+  const paraLabelValue = (label, value, opts = {}) => {
+    const { sz = 22 } = opts;
+    return `<w:p><w:pPr></w:pPr>
+      <w:r><w:rPr><w:b/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/><w:rFonts w:val="Times New Roman"/></w:rPr>
+      <w:t xml:space="preserve">${x(label)}</w:t></w:r>
+      <w:r><w:rPr><w:i/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/><w:rFonts w:val="Times New Roman"/></w:rPr>
+      <w:t xml:space="preserve">${x(value)}</w:t></w:r></w:p>`;
+  };
 
-  const bodyPar = (children, spaceBefore=40, spaceAfter=40, align=AlignmentType.LEFT) =>
-    new Paragraph({ alignment: align, spacing:{ before:spaceBefore, after:spaceAfter },
-      children });
+  const rule = () => para('— — — — — — — — — — — — — — — — — — — — — — — — — — — —', { center: true, color: 'AAAAAA', sz: 16 });
 
-  const rule = () => new Paragraph({
-    spacing:{before:40,after:40},
-    border:{ bottom:{ style:BorderStyle.SINGLE, size:6, color:'000000', space:1 } },
-    children:[]
-  });
+  const blankLine = () => para('_'.repeat(90), { sz: 20 });
 
   const p1Label = isFil ? 'Bahagi I. Tama o Mali' : 'Part I. True or False';
   const p2Label = isFil ? 'Bahagi II. Word Bank' : 'Part II. Word Bank';
   const p3Label = isFil ? 'Bahagi III. Sanaysay (Essay)' : 'Part III. Essay';
-  const tfPts  = (part1.items||[]).length;
-  const wbPts  = (part2.items||[]).length;
-  const essayPts = (part3.items||[]).length;
+  const tfPts    = (part1.items || []).length;
+  const wbPts    = (part2.items || []).length;
+  const essayPts = (part3.items || []).length;
 
   const tfInstr = isFil
-    ? `Sumulat ng T kung tama at M kung mali.`
-    : `Write T if the statement is correct and F if it is wrong.`;
+    ? 'Sumulat ng T kung tama at M kung mali.'
+    : 'Write T if the statement is correct and F if it is wrong.';
   const wbInstr = isFil
-    ? `Gamitin ang mga salita sa Word Bank para sagutan ang mga patlang. Isulat ang tamang salita sa patlang.`
-    : `Use the words in the Word Bank to answer the blanks. Write the correct word on the line.`;
-  const essayInstr = isFil
-    ? `Sagutin sa 1-2 pangungusap.`
-    : `Answer in 1-2 sentences.`;
+    ? 'Gamitin ang mga salita sa Word Bank para sagutan ang mga patlang. Isulat ang tamang salita sa patlang.'
+    : 'Use the words in the Word Bank to answer the blanks. Write the correct word on the line.';
+  const essayInstr = isFil ? 'Sagutin sa 1-2 pangungusap.' : 'Answer in 1-2 sentences.';
 
-  const answerLines = (n=9) => Array.from({length:n}, () =>
-    new Paragraph({ spacing:{before:20,after:20},
-      children:[new TextRun({ text:'_'.repeat(90), size:20, font:iFont })] })
-  );
+  const gradeLabel = grade || '';
 
-  const children = [
-    // ── Header ──
-    hdr('UPPER KLINAN SDA SCHOOL INC', 28, true),
-    hdr('Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato', 20, false),
-    hdr('School ID: 409417', 20, false),
-    hdr('"Where Children Enjoy Holistic Learning"', 20, false),
-    hdr(`${quarter} Quarter`, 24, true),
-    hdr('Prelim Exam', 26, true),
-    hdr('SY 2025-2026', 22, true),
-    hdr(subject, 26, true),
-    new Paragraph({ spacing:{before:80, after:80},
-      children:[
-        new TextRun({ text:'Name: ', bold:true, size:22, font:iFont }),
-        blank(42),
-        sp(4),
-        new TextRun({ text:'  Date:', bold:true, size:22, font:iFont }),
-        blank(12),
-        sp(2),
-        new TextRun({ text:'  Score:', bold:true, size:22, font:iFont }),
-        blank(12),
-      ]}),
-    rule(),
+  // ── PART I items ──
+  const part1Xml = (part1.items || []).map(it => para(`_____  ${it.q}`, { sz: 22 })).join('');
 
-    // ── PART I ──
-    bodyPar([new TextRun({ text:`${p1Label} (${tfPts} pts)`, bold:true, size:24, font:iFont })], 80, 40),
-    bodyPar([
-      new TextRun({ text:`Story: `, bold:true, size:22, font:iFont }),
-      new TextRun({ text: part1.story||'', italics:true, size:22, font:iFont }),
-    ], 20, 20),
-    bodyPar([
-      new TextRun({ text: '👉 ', size:22, font:iFont }),
-      new TextRun({ text: tfInstr, size:22, font:iFont }),
-    ], 20, 60),
-    ...(part1.items||[]).map(it =>
-      new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
-        children:[
-          new TextRun({ text:'_____  ', size:22, font:iFont }),
-          new TextRun({ text: it.q, size:22, font:iFont }),
-        ]})
-    ),
-    rule(),
+  // ── PART II items ──
+  const part2Xml = (part2.items || []).map((it, i) => para(`${i + 1}.  ${it.q}`, { sz: 22 })).join('');
 
-    // ── PART II ──
-    bodyPar([new TextRun({ text:`${p2Label} (${wbPts} pts)`, bold:true, size:24, font:iFont })], 80, 40),
-    bodyPar([
-      new TextRun({ text:`Story: `, bold:true, size:22, font:iFont }),
-      new TextRun({ text: part2.story||'', italics:true, size:22, font:iFont }),
-    ], 20, 20),
-    bodyPar([
-      new TextRun({ text:'👉 ', size:22, font:iFont }),
-      new TextRun({ text: wbInstr, size:22, font:iFont }),
-    ], 20, 40),
-    // Word Bank box
-    bodyPar([
-      new TextRun({ text: `${isFil?'Listahan ng Salita':'Word Bank'}:`, bold:true, size:22, font:iFont }),
-    ], 20, 10),
-    bodyPar([
-      new TextRun({ text: (part2.wordBank||[]).join(' • '), bold:true, size:22, font:iFont }),
-    ], 10, 40),
-    ...(part2.items||[]).map((it,i) =>
-      new Paragraph({ spacing:{before:30,after:30}, indent:{left:CM(0.5)},
-        children:[
-          new TextRun({ text:`${i+1}.  `, bold:true, size:22, font:iFont }),
-          new TextRun({ text: it.q, size:22, font:iFont }),
-        ]})
-    ),
-    rule(),
+  // ── PART III items (question + a few blank answer lines) ──
+  const part3Xml = (part3.items || []).map((it, i) =>
+    para(`${i + 1}. ${it.q}`, { bold: false, sz: 22 }) +
+    blankLine() + blankLine() + blankLine() + blankLine()
+  ).join('');
 
-    // ── PART III ──
-    bodyPar([new TextRun({ text:`${p3Label} (${essayPts} items 5 pts)`, bold:true, size:24, font:iFont })], 80, 40),
-    bodyPar([
-      new TextRun({ text:`Story: `, bold:true, size:22, font:iFont }),
-      new TextRun({ text: part3.story||'', italics:true, size:22, font:iFont }),
-    ], 20, 20),
-    bodyPar([
-      new TextRun({ text:'👉 ', size:22, font:iFont }),
-      new TextRun({ text: essayInstr, size:22, font:iFont }),
-    ], 20, 40),
-    ...(part3.items||[]).flatMap((it,i) => [
-      new Paragraph({ spacing:{before:40,after:20},
-        children:[
-          new TextRun({ text:`${i+1}. `, bold:true, size:22, font:iFont }),
-          new TextRun({ text: it.q, size:22, font:iFont }),
-        ]}),
-      ...answerLines(9),
-      new Paragraph({ spacing:{before:0,after:0}, children:[new TextRun({ text:'.', size:22, font:iFont })] }),
-    ]),
-    rule(),
+  // ── Answer key ──
+  const ak1Xml = (part1.items || []).map((it, i) => {
+    const ans = (it.answer === true || it.answer === 'true') ? 'T' : 'F';
+    return para(`${i + 1}. ${ans}`, { sz: 20 });
+  }).join('');
+  const ak2Xml = (part2.items || []).map((it, i) => para(`${i + 1}. ${it.answer || ''}`, { sz: 20 })).join('');
 
-    // ── ANSWER KEY ──
-    bodyPar([new TextRun({ text: isFil?'SUSI SA PAGWAWASTO (Answer Key)':'ANSWER KEY', bold:true, size:24, font:iFont, color:'2E7D32' })], 80, 40),
-    bodyPar([new TextRun({ text: `${p1Label}:`, bold:true, size:22, font:iFont })], 20, 10),
-    ...(part1.items||[]).map((it,i) =>
-      new Paragraph({ spacing:{before:20,after:20}, indent:{left:CM(0.5)},
-        children:[new TextRun({ text:`${i+1}. ${it.answer===true||it.answer==='true'?'T':'F'}`, size:22, font:iFont })] })
-    ),
-    bodyPar([new TextRun({ text: `${p2Label}:`, bold:true, size:22, font:iFont })], 40, 10),
-    ...(part2.items||[]).map((it,i) =>
-      new Paragraph({ spacing:{before:20,after:20}, indent:{left:CM(0.5)},
-        children:[new TextRun({ text:`${i+1}. ${it.answer||''}`, size:22, font:iFont })] })
-    ),
-  ];
+  const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?mso-application progid="Word.Document"?>
+<w:wordDocument xmlns:w="http://schemas.microsoft.com/office/word/2003/wordml"
+  xmlns:wx="http://schemas.microsoft.com/office/word/2003/auxHint"
+  w:macrosPresent="no" w:embeddedObjPresent="no" w:ocxPresent="no">
+<w:body>
+  <w:sectPr>
+    <w:pgSz w:w="12240" w:h="15840" w:orient="portrait"/>
+    <w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080"/>
+  </w:sectPr>
 
-  try {
-    const doc = new Document({
-      sections:[{
-        properties:{
-          page:{
-            size:{ width:12240, height:15840 },
-            margin:{ top:CM(2), right:CM(2), bottom:CM(2), left:CM(2.5) }
-          }
-        },
-        children
-      }]
-    });
-    const buf = await Packer.toBuffer(doc);
-    const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const fname = `${subject.replace(/\s+/g,'_')}_${quarter}_Prelim_Exam.docx`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download=fname; a.click();
-    setTimeout(()=>URL.revokeObjectURL(url),1500);
-    toast('✅ Prelim Exam downloaded as Word (.docx)!','ts');
-  } catch(e){
+  ${para('UPPER KLINAN SDA SCHOOL INC', { bold: true, center: true, sz: 28 })}
+  ${para('Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato', { center: true, sz: 20 })}
+  ${para('School ID: 409417', { center: true, sz: 20 })}
+  ${para('"Where Children Enjoy Holistic Learning"', { center: true, sz: 20, italic: true })}
+  ${para(`${quarter} Quarter`, { bold: true, center: true, sz: 24 })}
+  ${para('Prelim Exam', { bold: true, center: true, sz: 26 })}
+  ${para('SY 2025-2026', { bold: true, center: true, sz: 22 })}
+  ${para(`${subject}${gradeLabel ? ' — ' + gradeLabel : ''}`, { bold: true, center: true, sz: 26 })}
+  <w:p/>
+
+  ${para('Name: _______________________________________     Date: __________     Score: __________', { sz: 22 })}
+  ${rule()}
+
+  ${para(`${p1Label} (${tfPts} pts)`, { bold: true, sz: 24 })}
+  ${paraLabelValue('Story: ', part1.story || '')}
+  ${para('👉 ' + tfInstr, { sz: 22 })}
+  <w:p/>
+  ${part1Xml}
+  ${rule()}
+
+  ${para(`${p2Label} (${wbPts} pts)`, { bold: true, sz: 24 })}
+  ${paraLabelValue('Story: ', part2.story || '')}
+  ${para('👉 ' + wbInstr, { sz: 22 })}
+  <w:p/>
+  ${para(isFil ? 'Listahan ng Salita:' : 'Word Bank:', { bold: true, sz: 22 })}
+  ${para((part2.wordBank || []).join('  •  '), { bold: true, sz: 22 })}
+  <w:p/>
+  ${part2Xml}
+  ${rule()}
+
+  ${para(`${p3Label} (${essayPts} items, 5 pts each)`, { bold: true, sz: 24 })}
+  ${paraLabelValue('Story: ', part3.story || '')}
+  ${para('👉 ' + essayInstr, { sz: 22 })}
+  <w:p/>
+  ${part3Xml}
+  ${rule()}
+
+  ${para(isFil ? 'SUSI SA PAGWAWASTO (Answer Key)' : 'ANSWER KEY', { bold: true, center: true, color: '2E7D32', sz: 24 })}
+  <w:p/>
+  ${para(`${p1Label}:`, { bold: true, sz: 22 })}
+  ${ak1Xml}
+  <w:p/>
+  ${para(`${p2Label}:`, { bold: true, sz: 22 })}
+  ${ak2Xml}
+  <w:p/>
+  ${para(`${p3Label}: ${isFil ? '(Bukas na sagot — tingnan ang mga modelong sagot)' : '(Open-ended — check model answers manually)'}`, { color: '888888', italic: true, sz: 20 })}
+</w:body>
+</w:wordDocument>`;
+
+  const blob = new Blob([xml], { type: 'application/msword' });
+  const safeSubject = (subject || 'Subject').replace(/[^\w\s-]/g, '').replace(/\s+/g, '_').slice(0, 40);
+  const safeQuarter = (quarter || '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '');
+  const fname = `${safeSubject}_${safeQuarter}_Prelim_Exam.doc`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  toast('✅ Prelim Exam downloaded as Word (.doc)!', 'ts');
+
+  } catch (e) {
     console.error(e);
-    toast('❌ Download error: '+e.message,'te');
+    toast('❌ Download error: ' + (e && e.message ? e.message : e), 'te');
   }
 }
 /* ── END PRELIM EXAM ── */
