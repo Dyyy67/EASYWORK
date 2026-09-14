@@ -159,10 +159,47 @@ ${subjectLines}
 Use accurate Philippine K-12 curriculum competencies. Use real textbook references (Angkla, HELE, MAPEH, Science, Math, Sibika/Araling Panlipunan, Hiyas, Bible, etc.).` };
 }
 
+/* Scan for the first complete top-level JSON value ({...} or [...]) in the
+   string, properly tracking quoted strings/escapes so a } or { inside a
+   quoted answer — or in any trailing commentary the AI tacks on after the
+   real JSON — never throws off where the value actually ends. Returns null
+   if the braces never balance (e.g. a truncated response), so the caller
+   can fall back to the older naive slice as a last resort. */
+function extractFirstJsonValue(s){
+  const startIdx = s.search(/[{\[]/);
+  if(startIdx === -1) return null;
+  const open = s[startIdx];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0, inStr = false, esc = false;
+  for(let i = startIdx; i < s.length; i++){
+    const c = s[i];
+    if(inStr){
+      if(esc){ esc = false; }
+      else if(c === '\\'){ esc = true; }
+      else if(c === '"'){ inStr = false; }
+      continue;
+    }
+    if(c === '"'){ inStr = true; continue; }
+    if(c === open) depth++;
+    else if(c === close){
+      depth--;
+      if(depth === 0) return s.slice(startIdx, i + 1);
+    }
+  }
+  return null; // unterminated — let the caller fall back
+}
+
 function parseAIJson(raw){
   let js = String(raw||'').replace(/```json|```/g,'').trim();
-  const s=js.indexOf('{'), e=js.lastIndexOf('}');
-  if(s!==-1&&e!==-1) js=js.slice(s,e+1);
+  const matched = extractFirstJsonValue(js);
+  if(matched){
+    js = matched;
+  } else {
+    // Fallback: old naive "first { to last }" slice, only used when proper
+    // brace-matching couldn't find a balanced value at all.
+    const s=js.indexOf('{'), e=js.lastIndexOf('}');
+    if(s!==-1&&e!==-1) js=js.slice(s,e+1);
+  }
   if(!js) throw new Error('AI returned empty content. Try again.');
   try { return JSON.parse(js); }
   catch(_){
