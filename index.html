@@ -312,7 +312,7 @@
       <div class="ci" style="background:#E8F5E9;color:#2E7D32;">📄</div>
       <div>
         <div class="ct">Prelim Exam Management</div>
-        <div class="cs">Upload 3–6 reference files (.docx, .doc, or .pdf), set subject &amp; grade, then generate a formatted Prelim Exam. <strong>Filipino</strong> and <strong>Arpan</strong> exams are generated in Filipino.</div>
+        <div class="cs">Upload reference files (.docx, .doc, or .pdf), set subject &amp; grade, then generate a formatted Prelim Exam. <strong>Filipino</strong> and <strong>Arpan</strong> exams are generated in Filipino.</div>
       </div>
     </div>
 
@@ -409,7 +409,7 @@
 
     <!-- File upload area -->
     <div style="margin-bottom:14px;">
-      <label class="flbl">Reference Files (3–6 .docx / .doc / .pdf)</label>
+      <label class="flbl">Reference Files (.docx / .doc / .pdf)</label>
       <div id="prelimDropZone" style="border:2px dashed #A5D6A7;border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:#F9FBE7;transition:background .2s;"
         onclick="document.getElementById('prelimFileInput').click()"
         ondragover="event.preventDefault();this.style.background='#DCEDC8';"
@@ -417,7 +417,7 @@
         ondrop="prelimHandleDrop(event)">
         <div style="font-size:28px;margin-bottom:6px;">📁</div>
         <div style="font-size:13px;color:#558B2F;font-weight:600;">Click or drag &amp; drop files here</div>
-        <div style="font-size:11px;color:#888;margin-top:4px;">3 to 6 files • .docx, .doc, or .pdf</div>
+        <div style="font-size:11px;color:#888;margin-top:4px;">Any number of files • .docx, .doc, or .pdf</div>
       </div>
       <input type="file" id="prelimFileInput" accept=".docx,.doc,.pdf" multiple style="display:none" onchange="prelimHandleFiles(this.files)">
     </div>

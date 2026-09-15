@@ -14,9 +14,6 @@ function prelimHandleDrop(e){
 async function prelimHandleFiles(fileList){
   const files = Array.from(fileList).filter(f => /\.(docx|doc|pdf)$/i.test(f.name));
   if(!files.length){ toast('Please upload .docx, .doc, or .pdf files only.','te'); return; }
-  if(files.length + prelimFiles.length > 6){
-    toast('Maximum 6 files allowed. Remove some first.','te'); return;
-  }
   for(const file of files){
     const text = await prelimExtractDocx(file);
     prelimFiles.push({ name: file.name, text });
@@ -272,7 +269,7 @@ ${instr}
 async function prelimGenerate(){
   const apiKey = getActiveKey();
   if(!apiKey){ toast('⚠️ No API key. Add one in the API Key Manager.','te'); return; }
-  if(prelimFiles.length < 3){ toast('Please upload at least 3 reference files (.docx, .doc, or .pdf).','te'); return; }
+  if(prelimFiles.length < 1){ toast('Please upload at least 1 reference file (.docx, .doc, or .pdf).','te'); return; }
 
   const subject = document.getElementById('prelimSubject').value.trim() || 'the subject';
   const grade   = document.getElementById('prelimGrade').value;
