@@ -341,21 +341,68 @@
       </div>
     </div>
 
-    <!-- Part settings -->
+    <!-- Part settings — same test-type options as Summative -->
     <div style="background:#F1F8E9;border:1px solid #C5E1A5;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
-      <div style="font-weight:700;font-size:12px;color:#2E7D32;margin-bottom:10px;">📋 Exam Parts &amp; Item Count</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;">
-        <div class="fgrp" style="min-width:120px;flex:1;">
-          <label class="flbl">Part I — True or False</label>
-          <input class="fc" id="prelimTF" type="number" value="20" min="0" max="80" style="text-align:center;">
+      <div style="font-weight:700;font-size:12px;color:#2E7D32;margin-bottom:10px;">📋 Exam Parts — Test Type &amp; Item Count</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+          <div class="fgrp" style="min-width:220px;flex:2;">
+            <label class="flbl">Part I — Test Type (required)</label>
+            <select class="fc" id="prelimType1" onchange="prelimOnTypeChange(1,this.value)">
+              <option value="True or False" selected>True or False</option>
+              <option value="True or False (Write the Correct Answer)">True or False (Write the Correct Answer)</option>
+              <option value="Multiple Choice">Multiple Choice</option>
+              <option value="Matching Type">Matching Type</option>
+              <option value="Word Bank">Word Bank</option>
+              <option value="Enumeration">Enumeration</option>
+              <option value="Essay / Extended Response">Essay / Extended Response</option>
+              <option value="Custom Answer Set (2-6 Answers)">Custom Answer Set (2-6 Answers)</option>
+            </select>
+          </div>
+          <div class="fgrp" style="min-width:90px;">
+            <label class="flbl">Items</label>
+            <input class="fc" id="prelimCount1" type="number" value="20" min="1" max="80" style="text-align:center;">
+          </div>
         </div>
-        <div class="fgrp" style="min-width:120px;flex:1;">
-          <label class="flbl">Part II — Word Bank / Fill</label>
-          <input class="fc" id="prelimWB" type="number" value="10" min="0" max="80" style="text-align:center;">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+          <div class="fgrp" style="min-width:220px;flex:2;">
+            <label class="flbl">Part II — Test Type (optional)</label>
+            <select class="fc" id="prelimType2" onchange="prelimOnTypeChange(2,this.value)">
+              <option value="">— None —</option>
+              <option value="True or False">True or False</option>
+              <option value="True or False (Write the Correct Answer)">True or False (Write the Correct Answer)</option>
+              <option value="Multiple Choice">Multiple Choice</option>
+              <option value="Matching Type">Matching Type</option>
+              <option value="Word Bank" selected>Word Bank</option>
+              <option value="Enumeration">Enumeration</option>
+              <option value="Essay / Extended Response">Essay / Extended Response</option>
+              <option value="Custom Answer Set (2-6 Answers)">Custom Answer Set (2-6 Answers)</option>
+            </select>
+          </div>
+          <div class="fgrp" style="min-width:90px;">
+            <label class="flbl">Items</label>
+            <input class="fc" id="prelimCount2" type="number" value="10" min="0" max="80" style="text-align:center;">
+          </div>
         </div>
-        <div class="fgrp" style="min-width:120px;flex:1;">
-          <label class="flbl">Part III — Essay (items)</label>
-          <input class="fc" id="prelimEssay" type="number" value="2" min="0" max="80" style="text-align:center;">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+          <div class="fgrp" style="min-width:220px;flex:2;">
+            <label class="flbl">Part III — Test Type (optional)</label>
+            <select class="fc" id="prelimType3" onchange="prelimOnTypeChange(3,this.value)">
+              <option value="">— None —</option>
+              <option value="True or False">True or False</option>
+              <option value="True or False (Write the Correct Answer)">True or False (Write the Correct Answer)</option>
+              <option value="Multiple Choice">Multiple Choice</option>
+              <option value="Matching Type">Matching Type</option>
+              <option value="Word Bank">Word Bank</option>
+              <option value="Enumeration">Enumeration</option>
+              <option value="Essay / Extended Response" selected>Essay / Extended Response</option>
+              <option value="Custom Answer Set (2-6 Answers)">Custom Answer Set (2-6 Answers)</option>
+            </select>
+          </div>
+          <div class="fgrp" style="min-width:90px;">
+            <label class="flbl">Items</label>
+            <input class="fc" id="prelimCount3" type="number" value="2" min="0" max="80" style="text-align:center;">
+          </div>
         </div>
       </div>
     </div>

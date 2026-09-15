@@ -178,6 +178,96 @@ function feBuildRefContext(){
   return combined;
 }
 
+/* ── Test-type selection (same options as Summative) ── */
+let prelimCustomAnswers = { 1: [], 2: [], 3: [] };
+
+function prelimOnTypeChange(slot, val){
+  if(val === CUSTOM_ANSWER_TYPE){
+    const existing = (prelimCustomAnswers[slot] || []).join(', ');
+    const input = prompt('Type the answers pupils should give for this part (2 to 6 answers, separated by commas):', existing);
+    if(input === null){ return; }
+    const answers = input.split(',').map(a => a.trim()).filter(Boolean);
+    if(answers.length < 2 || answers.length > 6){
+      toast('Please enter between 2 and 6 answers.','te');
+      return;
+    }
+    prelimCustomAnswers[slot] = answers;
+  }
+}
+
+/* Type-specific instructions reused across all 3 parts (mirrors Summative's per-type hints) */
+function prelimTypeInstructions(type, count, isFil, customAnswers){
+  const list = (customAnswers||[]).map(a=>'"'+a+'"').join(', ');
+  if(isFil){
+    switch(type){
+      case 'True or False': return `Gumawa ng eksaktong ${count} pahayag na maaaring TAMA o MALI. Ang "answer" ay dapat boolean true o false.`;
+      case 'True or False (Write the Correct Answer)': return `Gumawa ng eksaktong ${count} pahayag. Kung TAMA, ang "answer" ay "Tama". Kung MALI, ang "answer" ay ang WASTONG/tamang pahayag (HUWAG gamitin ang salitang "Mali" bilang sagot).`;
+      case 'Multiple Choice': return `Gumawa ng eksaktong ${count} tanong. Bawat isa ay may "choices" array ng 4 na pagpipilian (walang A/B/C/D prefix). Isang tamang sagot lamang; ang "answer" ay eksaktong kopya ng tamang pagpipilian.`;
+      case 'Matching Type': return `Gumawa ng eksaktong ${count} pares ng pagtutugma. Ang "q" ay Column A (termino/tanong), ang "columnB" ay ang tamang Column B na tugma; ang "answer" ay kopya rin ng columnB.`;
+      case 'Word Bank': return `Magdagdag ng top-level "wordBank" array na may ${count} salitang sagot (dagdagan ng 2-3 panlito). Bawat "q" ay pangungusap na may patlang (__________); ang "answer" ay ang tamang salita.`;
+      case 'Enumeration': return `Gumawa ng eksaktong ${count} tanong na nagpapabuo ng listahan (halimbawa: "Ibigay ang 3 bahagi ng..."). Ang "answer" ay ang kumpletong listahan, pinaghihiwalay ng kuwit.`;
+      case 'Essay / Extended Response': return `Gumawa ng eksaktong ${count} tanong na sasagutin sa 1-2 pangungusap.`;
+      case CUSTOM_ANSWER_TYPE: return `Gumawa ng eksaktong ${count} tanong na ang tamang sagot ay eksaktong isa lamang sa mga sumusunod: ${list || '(walang ibinigay na sagot)'}. Ang "answer" ay eksaktong kopya ng napiling sagot.`;
+      default: return `Gumawa ng eksaktong ${count} tanong.`;
+    }
+  }
+  switch(type){
+    case 'True or False': return `Create exactly ${count} True/False statements. "answer" must be boolean true or false.`;
+    case 'True or False (Write the Correct Answer)': return `Create exactly ${count} statements. If TRUE, "answer" is "True". If FALSE, "answer" must be the corrected true statement (never the word "False").`;
+    case 'Multiple Choice': return `Create exactly ${count} questions, each with a "choices" array of exactly 4 plain options (no A/B/C/D prefixes). Exactly one correct; "answer" is an exact copy of the correct choice text.`;
+    case 'Matching Type': return `Create exactly ${count} matching pairs. "q" is the Column A term/question, "columnB" is its correct Column B match; "answer" also copies columnB.`;
+    case 'Word Bank': return `Include a top-level "wordBank" array with ${count} answer words (plus 2-3 distractors). Each "q" is a fill-in-the-blank sentence (__________); "answer" is the correct word.`;
+    case 'Enumeration': return `Create exactly ${count} enumeration prompts asking pupils to list several related items. "answer" contains the full list, comma-separated.`;
+    case 'Essay / Extended Response': return `Create exactly ${count} essay questions answerable in 1-2 sentences.`;
+    case CUSTOM_ANSWER_TYPE: return `Create exactly ${count} questions whose correct answer is EXACTLY one of: ${list || '(no answers provided)'}. "answer" must copy the chosen answer exactly.`;
+    default: return `Create exactly ${count} questions.`;
+  }
+}
+
+function prelimBuildPartPrompt(type, count, subject, grade, quarter, combinedContext, isFil, customAnswers){
+  const langNote = isFil
+    ? 'MAHALAGA: Isulat ang LAHAT ng tanong, salita, at sagot SA FILIPINO/TAGALOG. Angkop sa antas ng Grades 4-6.'
+    : 'Write all questions and content in ENGLISH appropriate for Grades 4-6.';
+  const instr = prelimTypeInstructions(type, count, isFil, customAnswers);
+  const shape = `{"q": "..."${type==='Multiple Choice' ? ', "choices": ["...","...","...","..."]' : ''}${type==='Matching Type' ? ', "columnB": "..."' : ''}, "answer": ${type==='True or False' ? 'true' : '"..."'}}`;
+  const wbNote = type==='Word Bank' ? (isFil ? '"wordBank": ["salita1","salita2"],\n  ' : '"wordBank": ["word1","word2"],\n  ') : '';
+  return isFil ? `
+Ikaw ay isang guro na gumagawa ng Prelim Exam (${type}) para sa ${grade} ${subject} (${quarter} Quarter).
+Batay sa mga sumusunod na sangguniang dokumento:
+
+${combinedContext}
+
+${langNote}
+
+${instr}
+- Isama ang pangalan ng kwento/paksa bilang "story" field.
+- Sagutin LAMANG ng valid JSON. Walang markdown, walang backticks.
+
+{
+  "story": "Pangalan ng Kwento o Paksa",
+  ${wbNote}"items": [
+    ${shape}
+  ]
+}` : `
+You are a teacher creating a Prelim Exam part (${type}) for ${grade} ${subject} (${quarter} Quarter).
+Based on the reference documents below:
+
+${combinedContext}
+
+${langNote}
+
+${instr}
+- Include the story/topic name as the "story" field.
+- Respond ONLY with valid JSON. No markdown, no backticks.
+
+{
+  "story": "Story or Topic Name",
+  ${wbNote}"items": [
+    ${shape}
+  ]
+}`;
+}
+
 /* ── Main generation ── */
 async function prelimGenerate(){
   const apiKey = getActiveKey();
@@ -187,11 +277,18 @@ async function prelimGenerate(){
   const subject = document.getElementById('prelimSubject').value.trim() || 'the subject';
   const grade   = document.getElementById('prelimGrade').value;
   const quarter = document.getElementById('prelimQuarter').value;
-  const tfCount = parseInt(document.getElementById('prelimTF').value) || 20;
-  const wbCount = parseInt(document.getElementById('prelimWB').value) || 10;
-  const essayCount = parseInt(document.getElementById('prelimEssay').value) || 2;
-
   const isFil = /\bfilipino\b/i.test(subject) || /\barpan\b/i.test(subject);
+
+  const slots = [1,2,3].map(slot => {
+    const type  = (document.getElementById('prelimType'+slot)||{}).value || '';
+    const count = parseInt((document.getElementById('prelimCount'+slot)||{}).value) || 0;
+    return { slot, type, count };
+  }).filter(s => s.type && s.count > 0);
+
+  if(!slots.length){ toast('Select at least Part I test type and item count.','te'); return; }
+
+  const missingCustom = slots.some(s => s.type === CUSTOM_ANSWER_TYPE && (prelimCustomAnswers[s.slot]||[]).length < 2);
+  if(missingCustom){ toast('Set the 2–6 answers for the Custom Answer Set part first.','te'); return; }
 
   // Build combined context from uploaded files
   const combinedContext = prelimFiles.map((f,i) =>
@@ -212,160 +309,21 @@ async function prelimGenerate(){
   document.getElementById('prelimPreview').style.display = 'none';
   prelimResult = null;
 
-  const lang = isFil ? 'FILIPINO (Tagalog)' : 'ENGLISH';
-  const langNote = isFil
-    ? 'MAHALAGA: Isulat ang LAHAT ng tanong, salita, at sagot SA FILIPINO/TAGALOG. Angkop sa antas ng Grades 4-6.'
-    : 'Write all questions and content in ENGLISH appropriate for Grades 4-6.';
-
-  gstat.textContent = 'Generating Part I — True or False…';
-  gfill.style.width = '20%';
-
-  // PART I — True or False
-  const prompt1 = isFil ? `
-Ikaw ay isang guro na gumagawa ng Prelim Exam para sa ${grade} ${subject} (${quarter} Quarter).
-Batay sa mga sumusunod na sangguniang dokumento, gumawa ng eksaktong ${tfCount} True or False na tanong.
-
-KONTEKSTO MULA SA MGA DOKUMENTO:
-${combinedContext}
-
-${langNote}
-
-Mga Panuntunan:
-- Gumawa ng eksaktong ${tfCount} tanong na True o False
-- Ibatay ang lahat ng tanong sa nilalaman ng mga dokumento
-- Isama ang pangalan ng kwento/paksa bilang "story" field (halimbawa: "Ang Bahay sa Bato")
-- Ang mga tanong ay dapat angkop sa ${grade} na mag-aaral
-- Sagutin LAMANG ng valid JSON. Walang markdown, walang backticks.
-
-{
-  "story": "Pangalan ng Kwento o Paksa",
-  "items": [
-    {"q": "Ang tanong dito.", "answer": true},
-    {"q": "Isa pang tanong.", "answer": false}
-  ]
-}` : `
-You are a teacher creating a Prelim Exam for ${grade} ${subject} (${quarter} Quarter).
-Based on the reference documents below, create exactly ${tfCount} True or False questions.
-
-CONTEXT FROM UPLOADED DOCUMENTS:
-${combinedContext}
-
-${langNote}
-
-Rules:
-- Create exactly ${tfCount} True/False questions
-- Base all questions on content from the documents
-- Include the story/topic name as the "story" field
-- Questions must be appropriate for ${grade} students
-- Respond ONLY with valid JSON. No markdown, no backticks.
-
-{
-  "story": "Story or Topic Name",
-  "items": [
-    {"q": "The question here.", "answer": true},
-    {"q": "Another question.", "answer": false}
-  ]
-}`;
-
-  let part1, part2, part3;
-
+  const parts = [];
   try {
-    gstat.textContent = 'Generating Part I — True or False…';
-    gfill.style.width = '25%';
-    part1 = await prelimGenerateOnePart(prompt1, 'Part I');
-
-    gstat.textContent = 'Generating Part II — Word Bank…';
-    gfill.style.width = '55%';
-
-    const prompt2 = isFil ? `
-Batay sa mga sangguniang dokumento, gumawa ng Word Bank (Fill in the Blanks) na may eksaktong ${wbCount} tanong para sa ${grade} ${subject}.
-
-KONTEKSTO:
-${combinedContext}
-
-${langNote}
-
-- Gumawa ng ${wbCount} fill-in-the-blank na pangungusap
-- Isama ang lahat ng sagot sa isang "wordBank" array (10 salita, maaaring may dagdag na 2-3 na panlito)
-- Isama ang pangalan ng kwento/paksa bilang "story" field
-- Sagutin LAMANG ng valid JSON.
-
-{
-  "story": "Pangalan ng Kwento",
-  "wordBank": ["salita1","salita2","salita3"],
-  "items": [
-    {"q": "Si __________ ay pumunta sa bundok.", "answer": "Juan"}
-  ]
-}` : `
-Based on the reference documents, create a Word Bank exercise with exactly ${wbCount} fill-in-the-blank sentences for ${grade} ${subject}.
-
-CONTEXT:
-${combinedContext}
-
-${langNote}
-
-- Create ${wbCount} fill-in-the-blank sentences
-- Include all answers in a "wordBank" array (add 2-3 extra distractor words)
-- Include the story/topic name as "story" field
-- Respond ONLY with valid JSON.
-
-{
-  "story": "Story Name",
-  "wordBank": ["word1","word2","word3"],
-  "items": [
-    {"q": "The __________ went to the mountain.", "answer": "man"}
-  ]
-}`;
-
-    const raw2 = await prelimGenerateOnePart(prompt2, 'Part II');
-    part2 = raw2;
-
-    gstat.textContent = 'Generating Part III — Essay…';
-    gfill.style.width = '80%';
-
-    const prompt3 = isFil ? `
-Batay sa mga sangguniang dokumento, gumawa ng eksaktong ${essayCount} essay na tanong para sa ${grade} ${subject}.
-
-KONTEKSTO:
-${combinedContext}
-
-${langNote}
-
-- Ang bawat tanong ay dapat sumagot ng 1-2 pangungusap
-- Isama ang pangalan ng kwento/paksa bilang "story" field
-- Sagutin LAMANG ng valid JSON.
-
-{
-  "story": "Pangalan ng Kwento",
-  "items": [
-    {"q": "Bakit mahalaga ang... ?"}
-  ]
-}` : `
-Based on the reference documents, create exactly ${essayCount} essay questions for ${grade} ${subject}.
-
-CONTEXT:
-${combinedContext}
-
-${langNote}
-
-- Each question should be answered in 1-2 sentences
-- Include the story/topic name as "story" field
-- Respond ONLY with valid JSON.
-
-{
-  "story": "Story Name",
-  "items": [
-    {"q": "Why is it important that... ?"}
-  ]
-}`;
-
-    const raw3 = await prelimGenerateOnePart(prompt3, 'Part III');
-    part3 = raw3;
+    for(let i=0;i<slots.length;i++){
+      const s = slots[i];
+      gstat.textContent = `Generating Part ${['I','II','III'][i]} — ${s.type}…`;
+      gfill.style.width = Math.round(((i+0.5)/slots.length)*90) + '%';
+      const prompt = prelimBuildPartPrompt(s.type, s.count, subject, grade, quarter, combinedContext, isFil, prelimCustomAnswers[s.slot]);
+      const data = await prelimGenerateOnePart(prompt, 'Part '+(i+1));
+      parts.push({ type: s.type, count: s.count, story: data.story||'', items: data.items||[], wordBank: data.wordBank||[] });
+    }
 
     gfill.style.width = '100%';
     gstat.textContent = '✅ Done!';
 
-    prelimResult = { part1, part2, part3, subject, grade, quarter, isFil, tfCount, wbCount, essayCount };
+    prelimResult = { parts, subject, grade, quarter, isFil };
     prelimRenderPreview();
     dlBtn.style.display = '';
     toast('✅ Prelim Exam generated successfully!','ts');
@@ -512,71 +470,93 @@ async function prelimGenerateOnePart(prompt, label){
   }
 }
 
+/* ── Preview helpers (per test-type rendering, same options as Summative) ── */
+function prelimPreviewInstruction(type, isFil){
+  const map = {
+    'True or False': isFil ? 'Sumulat ng <strong>T</strong> kung tama at <strong>M</strong> kung mali.' : 'Write <strong>T</strong> if the statement is correct and <strong>F</strong> if it is wrong.',
+    'True or False (Write the Correct Answer)': isFil ? 'Isulat ang <strong>Tama</strong> kung tama. Kung mali, isulat ang wastong sagot.' : 'Write <strong>True</strong> if correct. If false, write the correct answer.',
+    'Multiple Choice': isFil ? 'Piliin ang letra ng tamang sagot.' : 'Choose the letter of the correct answer.',
+    'Matching Type': isFil ? 'Itugma ang Hanay A sa Hanay B.' : 'Match Column A with Column B.',
+    'Word Bank': isFil ? 'Gamitin ang mga salita sa <strong>Word Bank</strong> para sagutan ang mga patlang.' : 'Use the words in the <strong>Word Bank</strong> to answer the blanks.',
+    'Enumeration': isFil ? 'Isulat ang hinihinging listahan.' : 'Write the requested list.',
+    'Essay / Extended Response': isFil ? 'Sagutin sa 1-2 pangungusap.' : 'Answer in 1-2 sentences.',
+  };
+  return map[type] || (isFil ? 'Sagutin nang tama.' : 'Answer correctly.');
+}
+function prelimRenderPartItemsHtml(p){
+  const items = p.items||[];
+  if(p.type === 'Multiple Choice'){
+    return items.map((it,i)=>{
+      const choices = (it.choices||[]).map((c,ci)=>`<div>${String.fromCharCode(65+ci)}. ${esc(c)}</div>`).join('');
+      return `<div style="margin:4px 0;">_____ ${i+1}. ${esc(it.q)}<div style="margin-left:16px;display:grid;grid-template-columns:1fr 1fr;">${choices}</div></div>`;
+    }).join('');
+  }
+  if(p.type === 'Matching Type'){
+    const aLines = items.map((it,i)=>`<div>_____ ${i+1}. ${esc(it.q)}</div>`).join('');
+    const bLines = items.map((it,i)=>`<div>${String.fromCharCode(65+i)}. ${esc(it.columnB||it.answer||'')}</div>`).join('');
+    return `<div style="display:flex;gap:20px;"><div style="flex:1;"><strong>Column A</strong>${aLines}</div><div style="flex:1;"><strong>Column B</strong>${bLines}</div></div>`;
+  }
+  if(p.type === 'Word Bank'){
+    const wb = (p.wordBank||[]).map(w=>`<strong>${esc(w)}</strong>`).join(' • ');
+    const its = items.map((it,i)=>`<div style="margin:2px 0;">${i+1}. ${esc(it.q)}</div>`).join('');
+    return `<div style="margin-bottom:6px;"><strong>Word Bank:</strong> ${wb}</div>${its}`;
+  }
+  if(p.type === 'Essay / Extended Response'){
+    return items.map((it,i)=>`<div style="margin:4px 0;"><strong>${i+1}.</strong> ${esc(it.q)}<br>
+      <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div>
+      <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div></div>`).join('');
+  }
+  return items.map((it,i)=>`<div style="margin:2px 0;">_____ ${i+1}. ${esc(it.q)}</div>`).join('');
+}
+function prelimRenderPartAnswerHtml(p, isFil){
+  const items = p.items||[];
+  if(p.type === 'True or False'){
+    return items.map((it,i)=>`<div><strong>${i+1}.</strong> ${(it.answer===true||it.answer==='true') ? (isFil?'T (Tama)':'T (True)') : (isFil?'M (Mali)':'F (False)')}</div>`).join('');
+  }
+  if(p.type === 'Multiple Choice'){
+    return items.map((it,i)=>{
+      const idx = (it.choices||[]).findIndex(c=>String(c).trim().toLowerCase()===String(it.answer||'').trim().toLowerCase());
+      const letter = idx>=0 ? String.fromCharCode(65+idx) : '';
+      return `<div><strong>${i+1}.</strong> ${letter}${letter?'. ':''}${esc(it.answer||'')}</div>`;
+    }).join('');
+  }
+  if(p.type === 'Essay / Extended Response'){
+    return `<em style="font-weight:400;">(Open-ended — check model answers in the downloaded Word file)</em>`;
+  }
+  return items.map((it,i)=>`<div><strong>${i+1}.</strong> ${esc(String(it.answer!==undefined&&it.answer!==null?it.answer:'—'))}</div>`).join('');
+}
+
 /* ── Preview renderer ── */
 function prelimRenderPreview(){
   if(!prelimResult) return;
-  const { part1, part2, part3, subject, grade, quarter, isFil } = prelimResult;
+  const { parts, subject, grade, quarter, isFil } = prelimResult;
+  const partLabels = ['I','II','III'];
 
-  const p1Label = isFil ? 'Bahagi I. Tama o Mali' : 'Part I. True or False';
-  const p2Label = isFil ? 'Bahagi II. Word Bank' : 'Part II. Word Bank';
-  const p3Label = isFil ? 'Bahagi III. Sanaysay (Essay)' : 'Part III. Essay';
-  const tfInstr = isFil
-    ? `Kwento: <em>${esc(part1.story||'')}</em><br>Sumulat ng <strong>T</strong> kung tama at <strong>M</strong> kung mali.`
-    : `Story: <em>${esc(part1.story||'')}</em><br>Write <strong>T</strong> if the statement is correct and <strong>F</strong> if it is wrong.`;
-  const wbInstr = isFil
-    ? `Kwento: <em>${esc(part2.story||'')}</em><br>Gamitin ang mga salita sa <strong>Word Bank</strong> para sagutan ang mga patlang.`
-    : `Story: <em>${esc(part2.story||'')}</em><br>Use the words in the <strong>Word Bank</strong> to answer the blanks.`;
-  const essayInstr = isFil
-    ? `Kwento: <em>${esc(part3.story||'')}</em><br>Sagutin sa 1-2 pangungusap.`
-    : `Story: <em>${esc(part3.story||'')}</em><br>Answer in 1-2 sentences.`;
-
-  const items1 = (part1.items||[]).map((it,i)=>
-    `<div style="margin:2px 0;">_____ ${i+1}. ${esc(it.q)}</div>`).join('');
-  const wb = (part2.wordBank||[]).map(w=>`<strong>${esc(w)}</strong>`).join(' • ');
-  const items2 = (part2.items||[]).map((it,i)=>
-    `<div style="margin:2px 0;">${i+1}. ${esc(it.q)}</div>`).join('');
-  const items3 = (part3.items||[]).map((it,i)=>
-    `<div style="margin:4px 0;"><strong>${i+1}.</strong> ${esc(it.q)}<br>
-    <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div>
-    <div style="border-bottom:1px solid #ccc;margin:3px 0;height:18px;"></div></div>`).join('');
-
-  document.getElementById('prelimPreviewBody').innerHTML = `
+  let bodyHtml = `
     <div style="text-align:center;font-weight:900;font-size:14px;">UPPER KLINAN SDA SCHOOL INC</div>
     <div style="text-align:center;font-size:11px;">Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato</div>
     <div style="text-align:center;font-size:11px;margin-bottom:6px;">School ID: 409417 &nbsp;•&nbsp; "Where Children Enjoy Holistic Learning"</div>
     <div style="text-align:center;font-weight:700;">${esc(quarter)} Quarter Prelim Exam &nbsp;|&nbsp; SY 2025-2026</div>
     <div style="text-align:center;font-weight:700;margin-bottom:8px;">${esc(subject)}</div>
     <div style="margin-bottom:8px;">Name: ___________________________________ &nbsp; Date: _________ &nbsp; Score: _________</div>
-    <hr style="margin:8px 0;">
-    <div style="font-weight:700;margin:8px 0;">${p1Label} (${(part1.items||[]).length} pts)</div>
-    <div style="font-style:italic;font-size:11px;margin-bottom:6px;">${tfInstr}</div>
-    ${items1}
-    <hr style="margin:8px 0;">
-    <div style="font-weight:700;margin:8px 0;">${p2Label} (${(part2.items||[]).length} pts)</div>
-    <div style="font-style:italic;font-size:11px;margin-bottom:4px;">${wbInstr}</div>
-    <div style="margin-bottom:6px;"><strong>${isFil?'Listahan ng Salita':'Word Bank'}:</strong> ${wb}</div>
-    ${items2}
-    <hr style="margin:8px 0;">
-    <div style="font-weight:700;margin:8px 0;">${p3Label} (${(part3.items||[]).length} items)</div>
-    <div style="font-style:italic;font-size:11px;margin-bottom:6px;">${essayInstr}</div>
-    ${items3}
   `;
+  let akHtml = '';
+
+  (parts||[]).forEach((p, idx) => {
+    const label = (isFil ? 'Bahagi ' : 'Part ') + (partLabels[idx]||(idx+1)) + '. ' + p.type;
+    bodyHtml += `
+    <hr style="margin:8px 0;">
+    <div style="font-weight:700;margin:8px 0;">${label} (${(p.items||[]).length} pts)</div>
+    <div style="font-style:italic;font-size:11px;margin-bottom:6px;">Story: <em>${esc(p.story||'')}</em><br>${prelimPreviewInstruction(p.type, isFil)}</div>
+    ${prelimRenderPartItemsHtml(p)}`;
+    akHtml += `
+    <div style="font-weight:700;color:#E65100;margin:6px 0 3px;">${label}:</div>
+    <div style="columns:2;column-gap:20px;margin-bottom:10px;">${prelimRenderPartAnswerHtml(p, isFil)}</div>`;
+  });
+
+  document.getElementById('prelimPreviewBody').innerHTML = bodyHtml;
   document.getElementById('prelimPreview').style.display = 'block';
 
-  /* Populate answer key panel */
-  const ak1 = (part1.items||[]).map((it,i) =>
-    `<div><strong>${i+1}.</strong> ${(it.answer===true||it.answer==='true') ? (isFil?'T (Tama)':'T (True)') : (it.answer===false||it.answer==='false') ? (isFil?'M (Mali)':'F (False)') : esc(String(it.answer||''))}</div>`
-  ).join('');
-  const ak2 = (part2.items||[]).map((it,i) =>
-    `<div><strong>${i+1}.</strong> ${esc(it.answer||'—')}</div>`
-  ).join('');
-  const akHtml = `
-    <div style="font-weight:700;color:#E65100;margin:6px 0 3px;">${p1Label}:</div>
-    <div style="columns:2;column-gap:20px;margin-bottom:10px;">${ak1}</div>
-    <div style="font-weight:700;color:#E65100;margin:6px 0 3px;">${p2Label}:</div>
-    <div style="columns:2;column-gap:20px;margin-bottom:10px;">${ak2}</div>
-    <div style="font-weight:700;color:#888;margin:6px 0 3px;">${p3Label}: <em style="font-weight:400;">(Open-ended — check model answers in the downloaded Word file)</em></div>
-  `;
   const akBody = document.getElementById('prelimAnsKeyBody');
   if(akBody) akBody.innerHTML = akHtml;
   /* Reset toggle button */
@@ -596,24 +576,34 @@ function prelimToggleAnsKey(){
   btn.textContent    = show ? '🙈 Hide Answer Key' : '👁 Show Answer Key';
 }
 
+/* ── Docx instruction text per test type (plain text, no HTML tags) ── */
+function prelimDocInstruction(type, isFil){
+  const map = {
+    'True or False': isFil ? 'Sumulat ng T kung tama at M kung mali.' : 'Write T if the statement is correct and F if it is wrong.',
+    'True or False (Write the Correct Answer)': isFil ? 'Isulat ang Tama kung tama. Kung mali, isulat ang wastong sagot.' : 'Write True if correct. If false, write the correct answer.',
+    'Multiple Choice': isFil ? 'Piliin ang letra ng tamang sagot.' : 'Choose the letter of the correct answer.',
+    'Matching Type': isFil ? 'Itugma ang Hanay A sa Hanay B.' : 'Match Column A with Column B.',
+    'Word Bank': isFil ? 'Gamitin ang mga salita sa Word Bank para sagutan ang mga patlang. Isulat ang tamang salita sa patlang.' : 'Use the words in the Word Bank to answer the blanks. Write the correct word on the line.',
+    'Enumeration': isFil ? 'Isulat ang hinihinging listahan.' : 'Write the requested list.',
+    'Essay / Extended Response': isFil ? 'Sagutin sa 1-2 pangungusap.' : 'Answer in 1-2 sentences.',
+  };
+  return map[type] || (isFil ? 'Sagutin nang tama.' : 'Answer correctly.');
+}
+
 /* ── DOCX Download ──
    Rewritten to build the file the SAME reliable way every other export in
    this app does (Lesson Plan, Summative, TOS, Final Exam): hand-written
    WordprocessingML XML wrapped in a Blob, no external library required.
-   The previous version depended on loading the third-party "docx" npm
-   package from a CDN at click-time — if that script failed to load (network
-   hiccup, ad-blocker, CSP, CDN outage) the whole function threw BEFORE
-   reaching its own try/catch, so the button did nothing and no error ever
-   reached the user. Removing that dependency fixes the silent failure. ── */
+   Now generalized to loop over whichever test types were picked for
+   Part I/II/III (same options as Summative), instead of a fixed
+   True-or-False / Word-Bank / Essay layout. ── */
 async function prelimDownload(){
   if(!prelimResult){ toast('Generate the exam first.','te'); return; }
 
   try {
 
-  const { part1: part1raw, part2: part2raw, part3: part3raw, subject, grade, quarter, isFil } = prelimResult;
-  const part1 = part1raw || { items: [] };
-  const part2 = part2raw || { items: [], wordBank: [] };
-  const part3 = part3raw || { items: [] };
+  const { parts: partsRaw, subject, grade, quarter, isFil } = prelimResult;
+  const parts = (partsRaw || []).map(p => ({ type: p.type, story: p.story||'', items: p.items||[], wordBank: p.wordBank||[] }));
 
   const x = s => String(s || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -641,41 +631,71 @@ async function prelimDownload(){
 
   const blankLine = () => para('_'.repeat(90), { sz: 20 });
 
-  const p1Label = isFil ? 'Bahagi I. Tama o Mali' : 'Part I. True or False';
-  const p2Label = isFil ? 'Bahagi II. Word Bank' : 'Part II. Word Bank';
-  const p3Label = isFil ? 'Bahagi III. Sanaysay (Essay)' : 'Part III. Essay';
-  const tfPts    = (part1.items || []).length;
-  const wbPts    = (part2.items || []).length;
-  const essayPts = (part3.items || []).length;
-
-  const tfInstr = isFil
-    ? 'Sumulat ng T kung tama at M kung mali.'
-    : 'Write T if the statement is correct and F if it is wrong.';
-  const wbInstr = isFil
-    ? 'Gamitin ang mga salita sa Word Bank para sagutan ang mga patlang. Isulat ang tamang salita sa patlang.'
-    : 'Use the words in the Word Bank to answer the blanks. Write the correct word on the line.';
-  const essayInstr = isFil ? 'Sagutin sa 1-2 pangungusap.' : 'Answer in 1-2 sentences.';
-
   const gradeLabel = grade || '';
+  const partLabels = ['I','II','III'];
 
-  // ── PART I items ──
-  const part1Xml = (part1.items || []).map(it => para(`_____  ${it.q}`, { sz: 22 })).join('');
+  const buildItemsXml = p => {
+    const items = p.items || [];
+    if(p.type === 'Multiple Choice'){
+      return items.map((it,i) => {
+        let block = para(`_____  ${i+1}. ${it.q}`, { sz: 22 });
+        (it.choices||[]).forEach((c,ci) => { block += para(`        ${String.fromCharCode(65+ci)}. ${c}`, { sz: 22 }); });
+        return block;
+      }).join('');
+    }
+    if(p.type === 'Matching Type'){
+      let block = para(isFil ? 'Hanay A' : 'Column A', { bold: true, sz: 22 });
+      items.forEach((it,i) => { block += para(`_____  ${i+1}. ${it.q}`, { sz: 22 }); });
+      block += para(isFil ? 'Hanay B' : 'Column B', { bold: true, sz: 22 });
+      items.forEach((it,i) => { block += para(`   ${String.fromCharCode(65+i)}. ${it.columnB||it.answer||''}`, { sz: 22 }); });
+      return block;
+    }
+    if(p.type === 'Word Bank'){
+      let block = para(isFil ? 'Listahan ng Salita:' : 'Word Bank:', { bold: true, sz: 22 });
+      block += para((p.wordBank || []).join('  •  '), { bold: true, sz: 22 });
+      items.forEach((it,i) => { block += para(`${i+1}.  ${it.q}`, { sz: 22 }); });
+      return block;
+    }
+    if(p.type === 'Essay / Extended Response'){
+      return items.map((it,i) => para(`${i+1}. ${it.q}`, { sz: 22 }) + blankLine()+blankLine()+blankLine()+blankLine()).join('');
+    }
+    return items.map((it,i) => para(`_____  ${i+1}. ${it.q}`, { sz: 22 })).join('');
+  };
 
-  // ── PART II items ──
-  const part2Xml = (part2.items || []).map((it, i) => para(`${i + 1}.  ${it.q}`, { sz: 22 })).join('');
+  const buildAnswerXml = p => {
+    const items = p.items || [];
+    if(p.type === 'True or False'){
+      return items.map((it,i) => para(`${i+1}. ${(it.answer===true||it.answer==='true') ? 'T' : 'F'}`, { sz: 20 })).join('');
+    }
+    if(p.type === 'Multiple Choice'){
+      return items.map((it,i) => {
+        const idx = (it.choices||[]).findIndex(c => String(c).trim().toLowerCase() === String(it.answer||'').trim().toLowerCase());
+        const letter = idx>=0 ? String.fromCharCode(65+idx) : '';
+        return para(`${i+1}. ${letter}${letter?'. ':''}${it.answer||''}`, { sz: 20 });
+      }).join('');
+    }
+    if(p.type === 'Essay / Extended Response'){
+      return para(isFil ? '(Bukas na sagot — tingnan ang mga modelong sagot)' : '(Open-ended — check model answers manually)', { color: '888888', italic: true, sz: 20 });
+    }
+    return items.map((it,i) => para(`${i+1}. ${it.answer!==undefined&&it.answer!==null ? it.answer : ''}`, { sz: 20 })).join('');
+  };
 
-  // ── PART III items (question + a few blank answer lines) ──
-  const part3Xml = (part3.items || []).map((it, i) =>
-    para(`${i + 1}. ${it.q}`, { bold: false, sz: 22 }) +
-    blankLine() + blankLine() + blankLine() + blankLine()
-  ).join('');
-
-  // ── Answer key ──
-  const ak1Xml = (part1.items || []).map((it, i) => {
-    const ans = (it.answer === true || it.answer === 'true') ? 'T' : 'F';
-    return para(`${i + 1}. ${ans}`, { sz: 20 });
-  }).join('');
-  const ak2Xml = (part2.items || []).map((it, i) => para(`${i + 1}. ${it.answer || ''}`, { sz: 20 })).join('');
+  let bodyXml = '';
+  let akXml = '';
+  parts.forEach((p, idx) => {
+    const label = (isFil ? 'Bahagi ' : 'Part ') + (partLabels[idx]||(idx+1)) + '. ' + p.type;
+    bodyXml += `
+  ${para(`${label} (${(p.items||[]).length} pts)`, { bold: true, sz: 24 })}
+  ${paraLabelValue('Story: ', p.story || '')}
+  ${para('👉 ' + prelimDocInstruction(p.type, isFil), { sz: 22 })}
+  <w:p/>
+  ${buildItemsXml(p)}
+  ${rule()}`;
+    akXml += `
+  ${para(`${label}:`, { bold: true, sz: 22 })}
+  ${buildAnswerXml(p)}
+  <w:p/>`;
+  });
 
   const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <?mso-application progid="Word.Document"?>
@@ -700,40 +720,11 @@ async function prelimDownload(){
 
   ${para('Name: _______________________________________     Date: __________     Score: __________', { sz: 22 })}
   ${rule()}
-
-  ${para(`${p1Label} (${tfPts} pts)`, { bold: true, sz: 24 })}
-  ${paraLabelValue('Story: ', part1.story || '')}
-  ${para('👉 ' + tfInstr, { sz: 22 })}
-  <w:p/>
-  ${part1Xml}
-  ${rule()}
-
-  ${para(`${p2Label} (${wbPts} pts)`, { bold: true, sz: 24 })}
-  ${paraLabelValue('Story: ', part2.story || '')}
-  ${para('👉 ' + wbInstr, { sz: 22 })}
-  <w:p/>
-  ${para(isFil ? 'Listahan ng Salita:' : 'Word Bank:', { bold: true, sz: 22 })}
-  ${para((part2.wordBank || []).join('  •  '), { bold: true, sz: 22 })}
-  <w:p/>
-  ${part2Xml}
-  ${rule()}
-
-  ${para(`${p3Label} (${essayPts} items, 5 pts each)`, { bold: true, sz: 24 })}
-  ${paraLabelValue('Story: ', part3.story || '')}
-  ${para('👉 ' + essayInstr, { sz: 22 })}
-  <w:p/>
-  ${part3Xml}
-  ${rule()}
+  ${bodyXml}
 
   ${para(isFil ? 'SUSI SA PAGWAWASTO (Answer Key)' : 'ANSWER KEY', { bold: true, center: true, color: '2E7D32', sz: 24 })}
   <w:p/>
-  ${para(`${p1Label}:`, { bold: true, sz: 22 })}
-  ${ak1Xml}
-  <w:p/>
-  ${para(`${p2Label}:`, { bold: true, sz: 22 })}
-  ${ak2Xml}
-  <w:p/>
-  ${para(`${p3Label}: ${isFil ? '(Bukas na sagot — tingnan ang mga modelong sagot)' : '(Open-ended — check model answers manually)'}`, { color: '888888', italic: true, sz: 20 })}
+  ${akXml}
 </w:body>
 </w:wordDocument>`;
 
