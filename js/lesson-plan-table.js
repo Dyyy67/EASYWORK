@@ -173,7 +173,7 @@ Grade: ${gradeDisplay} | Quarter: ${quarter} | School: ${school}
 Generate complete lesson plan entries for:
 ${subjectLines}
 
-Use accurate Philippine K-12 curriculum competencies. Use real textbook references (Angkla, HELE, MAPEH, Science, Math, Sibika/Araling Panlipunan, Hiyas, Bible, etc.).` };
+Base each competency/objective on real Philippine K-12 (MELC) curriculum expectations for the subject and grade level, and you may name real textbooks as references (Angkla, HELE, MAPEH, Science, Math, Sibika/Araling Panlipunan, Hiyas, Bible, etc.). But WRITE EVERYTHING IN YOUR OWN ORIGINAL WORDS — do not copy, quote, or closely paraphrase the official DepEd curriculum guide, MELC document, or any textbook's exact sentences, even partially. Fully rephrase every competency, objective, and question in fresh wording.` };
 }
 
 /* Scan for the first complete top-level JSON value ({...} or [...]) in the
@@ -506,7 +506,7 @@ ${isFilipino ? '- CRITICAL: The subject matter is written in Filipino language. 
 - Thursday: always exactly "SUMMATIVE"
 - Home-Based (fri): short activity label only (e.g. READING AND ARTS, DRAWING AND WRITING, BIBLE QUESTIONS, PAGBASA AT PAGSULAT)
 - Keep the subjectMatter field exactly as: "${subjectMatter}"
-- Use real Philippine K-12 curriculum competencies for ${row.area}
+- Base the competency on real Philippine K-12 (MELC) curriculum expectations for ${row.area}, but WRITE IT IN YOUR OWN ORIGINAL WORDS — do not copy, quote, or closely paraphrase the official DepEd curriculum guide or any textbook's exact sentences, even partially. Fully rephrase it in fresh wording.
 
 Return this exact JSON structure (one subject only). Use single quotes ' ' for any quoted text INSIDE a value (game/activity/strategy names, verse text). NEVER put a double-quote \" character inside a JSON string value — double quotes may only appear as the JSON string delimiters, or the JSON will fail to parse:
 {"area":"${row.area}","subjectMatter":"${subjectMatter}","competencies":"At the end of the lesson, the learners should be able to [specific competency based on the subject matter].","objectives":"a. [objective]\nb. [objective]\nc. [objective]","faith":"'[relevant Bible verse or faith value]'\n— [Reference or Source]","mon":"Strategy: '[Name]'\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","tue":"Strategy: '[Name]'\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","wed":"Strategy: '[Name]'\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","thu":"SUMMATIVE","fri":"[HOME ACTIVITY LABEL]"}`;
@@ -645,8 +645,7 @@ Return this exact JSON structure (one subject only). Use single quotes ' ' for a
       return;
     }
     handleApiError(e);
-  } finally {
-    // Button will be re-rendered by renderTable(), no need to reset
+    renderTable(); // reset the stuck "Searching…" button back to normal
   }
 }
 
