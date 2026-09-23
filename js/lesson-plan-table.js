@@ -268,6 +268,42 @@ function parseAIJson(raw){
   }
 }
 
+/* Pull the actual answer text out of a Gemini generateContent response, no
+   matter which finishReason it came back with. Handles every dead-end that
+   was previously falling through to a generic "Unexpected Gemini response"
+   error:
+   - no candidates at all (request-level block — promptFeedback.blockReason)
+   - a candidate whose content/parts are missing or empty
+   - a candidate whose first part is an internal "thought" part with no
+     actual answer in it (thinking wasn't fully suppressed) — handled by
+     joining EVERY part's text instead of only reading parts[0]
+   - finishReason values other than the two this app used to special-case
+     (SAFETY, MAX_TOKENS) — e.g. RECITATION, PROHIBITED_CONTENT, OTHER —
+     which now get a clear, specific message instead of a dead end. */
+function extractGeminiText(data){
+  const cand = data.candidates && data.candidates[0];
+  if(!cand){
+    const blockReason = data.promptFeedback?.blockReason;
+    throw new Error(blockReason
+      ? `Gemini blocked this request before generating anything (reason: ${blockReason}). Try rephrasing the topic/subject matter slightly, or use a different AI key.`
+      : 'Gemini returned no response at all. Try again.');
+  }
+  const raw = (cand.content?.parts || []).map(p => p.text || '').join('');
+  if(raw) return raw;
+
+  const finish = cand.finishReason;
+  if(finish === 'SAFETY'){
+    throw new Error('Gemini blocked this response for safety reasons (common with Health/PE growth-and-development topics). Try rephrasing the topic/subject matter slightly, or use a different AI key.');
+  }
+  if(finish === 'MAX_TOKENS'){
+    throw new Error('Gemini ran out of output space generating this content (common on longer subjects like PE & Health). Try regenerating just this one subject row with the 🔄 AI button instead of all subjects at once, or use a different AI key.');
+  }
+  if(finish === 'RECITATION'){
+    throw new Error('Gemini blocked this response because it looked too close to copyrighted textbook material (reason: RECITATION). Try wording the topic slightly differently, or use a different AI key.');
+  }
+  throw new Error(`Gemini returned no usable content${finish ? ` (reason: ${finish})` : ''}. Try again, rephrase the topic slightly, or use a different AI key.`);
+}
+
 async function callAI(apiKey, topic, subjects, grade, quarter){
   const activeKeyObj = mkKeys[mkActive] || {};
   const provider = activeKeyObj.provider || 'gemini';
@@ -425,22 +461,7 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
     }
     setProgress(70,'Parsing response…');
     const data = await resp.json();
-    const cand = data.candidates && data.candidates[0];
-    if(!cand){
-      const blockReason = data.promptFeedback?.blockReason;
-      throw new Error(blockReason
-        ? `Gemini blocked this response (reason: ${blockReason}). This can happen with Health/Growth topics — try rephrasing the topic slightly, or use a different AI key.`
-        : 'Gemini returned no response. Try again.');
-    }
-    if(cand.finishReason === 'SAFETY'){
-      throw new Error('Gemini blocked this response for safety reasons (common with Health/PE growth-and-development topics). Try rephrasing the topic/subject matter slightly, or use a different AI key.');
-    }
-    if(cand.finishReason === 'MAX_TOKENS'){
-      throw new Error('Gemini ran out of output space generating this content (common on longer subjects like PE & Health). Try regenerating just this one subject row with the 🔄 AI button instead of all subjects at once.');
-    }
-    const raw = cand.content?.parts?.[0]?.text || '';
-    if(!raw) throw new Error('Unexpected response from Gemini. Try again.');
-    return parseAIJson(raw);
+    return parseAIJson(extractGeminiText(data));
   }
 }
 
@@ -607,21 +628,7 @@ Return this exact JSON structure (one subject only). Use single quotes ' ' for a
         throw new Error(errMsg);
       }
       const data=await resp.json();
-      const cand = data.candidates && data.candidates[0];
-      if(!cand){
-        const blockReason = data.promptFeedback?.blockReason;
-        throw new Error(blockReason
-          ? `Gemini blocked this response (reason: ${blockReason}). This can happen with Health/Growth topics — try rephrasing the subject matter slightly, or use a different AI key.`
-          : 'Gemini returned no response. Try again.');
-      }
-      if(cand.finishReason === 'SAFETY'){
-        throw new Error('Gemini blocked this response for safety reasons (common with Health/PE growth-and-development topics). Try rephrasing the subject matter slightly, or use a different AI key.');
-      }
-      if(cand.finishReason === 'MAX_TOKENS'){
-        throw new Error('Gemini ran out of output space generating this content. Try shortening the subject matter text, or use a different AI key.');
-      }
-      raw = cand.content?.parts?.[0]?.text || '';
-      if(!raw) throw new Error('Unexpected Gemini response. Try again.');
+      raw = extractGeminiText(data);
     }
 
     const gen = parseAIJson(raw);
