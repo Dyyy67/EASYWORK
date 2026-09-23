@@ -2,6 +2,23 @@
    WEEKLY LESSON PLAN / POINTERS TABLE — row management, AI
    generation of the weekly table, and DOCX export.
    ============================================================ */
+
+/* Gemini's default safety thresholds routinely block completely benign
+   Grade 4-6 Health/PE curriculum content (growth & development, puberty,
+   hygiene, the human body, injuries/first-aid, etc.), which was the actual
+   cause of the "Unexpected Gemini response" error on PE & Health topics.
+   This is a legitimate school lesson-plan generator producing standard
+   DepEd K-12 Health curriculum content, so filtering is turned off
+   (BLOCK_NONE) for these categories rather than just loosened, since even
+   BLOCK_ONLY_HIGH can still flag ordinary puberty/growth-and-development
+   material meant for Grade 6 learners. */
+const GEMINI_SAFETY_SETTINGS = [
+  {category:'HARM_CATEGORY_HARASSMENT',       threshold:'BLOCK_NONE'},
+  {category:'HARM_CATEGORY_HATE_SPEECH',       threshold:'BLOCK_NONE'},
+  {category:'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold:'BLOCK_NONE'},
+  {category:'HARM_CATEGORY_DANGEROUS_CONTENT', threshold:'BLOCK_NONE'}
+];
+
 function renderTable(){
   const tbody=document.getElementById('ltBody');
   tbody.innerHTML='';
@@ -396,7 +413,8 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{parts:[{text:prompt}]}],
-        generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json'}
+        generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json'},
+        safetySettings: GEMINI_SAFETY_SETTINGS
       })
     });
     if(!resp.ok){
@@ -407,9 +425,18 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
     }
     setProgress(70,'Parsing response…');
     const data = await resp.json();
-    let raw = '';
-    try { raw = data.candidates[0].content.parts[0].text || ''; }
-    catch(_){ throw new Error('Unexpected response from Gemini. Try again.'); }
+    const cand = data.candidates && data.candidates[0];
+    if(!cand){
+      const blockReason = data.promptFeedback?.blockReason;
+      throw new Error(blockReason
+        ? `Gemini blocked this response (reason: ${blockReason}). This can happen with Health/Growth topics — try rephrasing the topic slightly, or use a different AI key.`
+        : 'Gemini returned no response. Try again.');
+    }
+    if(cand.finishReason === 'SAFETY'){
+      throw new Error('Gemini blocked this response for safety reasons (common with Health/PE growth-and-development topics). Try rephrasing the topic/subject matter slightly, or use a different AI key.');
+    }
+    const raw = cand.content?.parts?.[0]?.text || '';
+    if(!raw) throw new Error('Unexpected response from Gemini. Try again.');
     return parseAIJson(raw);
   }
 }
@@ -567,7 +594,8 @@ Return this exact JSON structure (one subject only). Use single quotes ' ' for a
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({contents:[{parts:[{text:prompt}]}],
-          generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'}})
+          generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'},
+          safetySettings: GEMINI_SAFETY_SETTINGS})
       });
       if(!resp.ok){
         const errData=await resp.json().catch(()=>({}));
@@ -576,8 +604,18 @@ Return this exact JSON structure (one subject only). Use single quotes ' ' for a
         throw new Error(errMsg);
       }
       const data=await resp.json();
-      try { raw=data.candidates[0].content.parts[0].text||''; }
-      catch(_){ throw new Error('Unexpected Gemini response. Try again.'); }
+      const cand = data.candidates && data.candidates[0];
+      if(!cand){
+        const blockReason = data.promptFeedback?.blockReason;
+        throw new Error(blockReason
+          ? `Gemini blocked this response (reason: ${blockReason}). This can happen with Health/Growth topics — try rephrasing the subject matter slightly, or use a different AI key.`
+          : 'Gemini returned no response. Try again.');
+      }
+      if(cand.finishReason === 'SAFETY'){
+        throw new Error('Gemini blocked this response for safety reasons (common with Health/PE growth-and-development topics). Try rephrasing the subject matter slightly, or use a different AI key.');
+      }
+      raw = cand.content?.parts?.[0]?.text || '';
+      if(!raw) throw new Error('Unexpected Gemini response. Try again.');
     }
 
     const gen = parseAIJson(raw);
