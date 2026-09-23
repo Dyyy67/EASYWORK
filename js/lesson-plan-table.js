@@ -147,8 +147,8 @@ Rules:
 - Thursday: always exactly "SUMMATIVE"
 - Friday/Home-Based: short label only. For Filipino subjects use Filipino labels (e.g. PAGBASA AT PAGSULAT, PAGGUHIT AT PAGSULAT, MGA TANONG SA BIBLIYA)
 
-JSON format (exact):
-{"subjects":[{"area":"...","subjectMatter":"Topic Title\nSanggunian/Reference: BookName pg. XX","competencies":"At the end of the lesson, the learners should be able to [specific competency].","objectives":"a. [obj]\nb. [obj]\nc. [obj]","faith":"\"[verse text]\"\n— [Reference]","mon":"Strategy: \"[Name]\"\n1. [question]\n2. [question]\n3. [question]","tue":"Strategy: \"[Name]\"\n1. [question]\n2. [question]\n3. [question]","wed":"Strategy: \"[Name]\"\n1. [question]\n2. [question]\n3. [question]","thu":"SUMMATIVE","fri":"[HOME LABEL]"}]}
+JSON format (exact — use single quotes ' ' for any quoted text INSIDE a value, e.g. game/activity/strategy names or verse text. NEVER put a double-quote \" character inside a JSON string value — double quotes may only appear as the JSON string delimiters, or the JSON will fail to parse):
+{"subjects":[{"area":"...","subjectMatter":"Topic Title\nSanggunian/Reference: BookName pg. XX","competencies":"At the end of the lesson, the learners should be able to [specific competency].","objectives":"a. [obj]\nb. [obj]\nc. [obj]","faith":"'[verse text]'\n— [Reference]","mon":"Strategy: '[Name]'\n1. [question]\n2. [question]\n3. [question]","tue":"Strategy: '[Name]'\n1. [question]\n2. [question]\n3. [question]","wed":"Strategy: '[Name]'\n1. [question]\n2. [question]\n3. [question]","thu":"SUMMATIVE","fri":"[HOME LABEL]"}]}
 
 Weekly topic: "${topic}"
 Grade: ${gradeDisplay} | Quarter: ${quarter} | School: ${school}
@@ -189,6 +189,39 @@ function extractFirstJsonValue(s){
   return null; // unterminated — let the caller fall back
 }
 
+/* Last-resort repair for the single most common AI mistake: a literal,
+   un-escaped " left inside a JSON string value (e.g. a quoted game or
+   strategy name the model forgot to escape). Walks the text tracking
+   whether we're inside a string; when a " is hit, peeks at the next
+   non-whitespace character — if it looks like a real string terminator
+   (,  }  ]  :  or end-of-text) it's treated as the closing quote,
+   otherwise it's escaped in place and the string is kept open. */
+function repairUnescapedQuotes(s){
+  let out = '', inStr = false;
+  for(let i = 0; i < s.length; i++){
+    const c = s[i];
+    if(inStr){
+      if(c === '\\' && i + 1 < s.length){ out += c + s[i+1]; i++; continue; }
+      if(c === '"'){
+        let j = i + 1;
+        while(j < s.length && /\s/.test(s[j])) j++;
+        const next = s[j];
+        if(j >= s.length || next===','||next==='}'||next===']'||next===':'){
+          inStr = false; out += c;
+        } else {
+          out += '\\"'; // literal quote inside the string — escape it
+        }
+        continue;
+      }
+      out += c;
+    } else {
+      if(c === '"') inStr = true;
+      out += c;
+    }
+  }
+  return out;
+}
+
 function parseAIJson(raw){
   let js = String(raw||'').replace(/```json|```/g,'').trim();
   const matched = extractFirstJsonValue(js);
@@ -208,7 +241,13 @@ function parseAIJson(raw){
       .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")  // smart quotes → straight
       .replace(/,\s*([}\]])/g,'$1')                                    // trailing commas
       .replace(/}\s*{/g,'},{');                                        // missing comma between objects
-    return JSON.parse(fixed);
+    try { return JSON.parse(fixed); }
+    catch(__){
+      /* Still broken — most likely an un-escaped quote left inside a
+         string value (e.g. PE & Health game names like "Duck, Duck,
+         Goose"). Try one more repair pass before giving up. */
+      return JSON.parse(repairUnescapedQuotes(fixed));
+    }
   }
 }
 
@@ -418,8 +457,8 @@ ${isFilipino ? '- CRITICAL: The subject matter is written in Filipino language. 
 - Keep the subjectMatter field exactly as: "${subjectMatter}"
 - Use real Philippine K-12 curriculum competencies for ${row.area}
 
-Return this exact JSON structure (one subject only):
-{"area":"${row.area}","subjectMatter":"${subjectMatter}","competencies":"At the end of the lesson, the learners should be able to [specific competency based on the subject matter].","objectives":"a. [objective]\nb. [objective]\nc. [objective]","faith":"\"[relevant Bible verse or faith value]\"\n— [Reference or Source]","mon":"Strategy: \"[Name]\"\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","tue":"Strategy: \"[Name]\"\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","wed":"Strategy: \"[Name]\"\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","thu":"SUMMATIVE","fri":"[HOME ACTIVITY LABEL]"}`;
+Return this exact JSON structure (one subject only). Use single quotes ' ' for any quoted text INSIDE a value (game/activity/strategy names, verse text). NEVER put a double-quote \" character inside a JSON string value — double quotes may only appear as the JSON string delimiters, or the JSON will fail to parse:
+{"area":"${row.area}","subjectMatter":"${subjectMatter}","competencies":"At the end of the lesson, the learners should be able to [specific competency based on the subject matter].","objectives":"a. [objective]\nb. [objective]\nc. [objective]","faith":"'[relevant Bible verse or faith value]'\n— [Reference or Source]","mon":"Strategy: '[Name]'\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","tue":"Strategy: '[Name]'\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","wed":"Strategy: '[Name]'\n1. [question about ${subjectMatter}]\n2. [question]\n3. [question]","thu":"SUMMATIVE","fri":"[HOME ACTIVITY LABEL]"}`;
 
   try {
     const activeKeyObj = mkKeys[mkActive] || {};
@@ -598,7 +637,7 @@ function handleApiError(e){
   } else if(msg.includes('API_KEY_INVALID')||msg.includes('API key not valid')||msg.includes('Unauthorized')||msg.includes('401')){
     const _akObj=mkKeys[mkActive]||{}; const _prov=feDetectProvider(_akObj.key||'',_akObj.provider||''); const _pName={gemini:'Gemini',openai:'OpenAI',groq:'Groq',cohere:'Cohere',mistral:'Mistral',deepseek:'DeepSeek',nvidia:'NVIDIA',together:'Together AI',openrouter:'OpenRouter',custom:'Custom'}[_prov]||'API'; toast('❌ Invalid API key. Please check your '+_pName+' key.','te');
   } else if(msg.includes('SyntaxError')||msg.includes('JSON')){
-    toast('⚠️ AI response format error. Please try generating again.','te');
+    toast('⚠️ AI returned a malformed response (usually a stray quote mark in a game/strategy name). Please click Generate/AI again — it usually succeeds on retry.','te');
   } else if(msg.includes('Failed to fetch')||msg.includes('NetworkError')){
     toast('❌ Network error. Check your internet connection.','te');
   } else {
