@@ -413,7 +413,7 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{parts:[{text:prompt}]}],
-        generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json'},
+        generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',thinkingConfig:{thinkingBudget:0}},
         safetySettings: GEMINI_SAFETY_SETTINGS
       })
     });
@@ -434,6 +434,9 @@ async function callAI(apiKey, topic, subjects, grade, quarter){
     }
     if(cand.finishReason === 'SAFETY'){
       throw new Error('Gemini blocked this response for safety reasons (common with Health/PE growth-and-development topics). Try rephrasing the topic/subject matter slightly, or use a different AI key.');
+    }
+    if(cand.finishReason === 'MAX_TOKENS'){
+      throw new Error('Gemini ran out of output space generating this content (common on longer subjects like PE & Health). Try regenerating just this one subject row with the 🔄 AI button instead of all subjects at once.');
     }
     const raw = cand.content?.parts?.[0]?.text || '';
     if(!raw) throw new Error('Unexpected response from Gemini. Try again.');
@@ -594,7 +597,7 @@ Return this exact JSON structure (one subject only). Use single quotes ' ' for a
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({contents:[{parts:[{text:prompt}]}],
-          generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'},
+          generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json',thinkingConfig:{thinkingBudget:0}},
           safetySettings: GEMINI_SAFETY_SETTINGS})
       });
       if(!resp.ok){
@@ -613,6 +616,9 @@ Return this exact JSON structure (one subject only). Use single quotes ' ' for a
       }
       if(cand.finishReason === 'SAFETY'){
         throw new Error('Gemini blocked this response for safety reasons (common with Health/PE growth-and-development topics). Try rephrasing the subject matter slightly, or use a different AI key.');
+      }
+      if(cand.finishReason === 'MAX_TOKENS'){
+        throw new Error('Gemini ran out of output space generating this content. Try shortening the subject matter text, or use a different AI key.');
       }
       raw = cand.content?.parts?.[0]?.text || '';
       if(!raw) throw new Error('Unexpected Gemini response. Try again.');
