@@ -435,6 +435,55 @@ Return this exact JSON shape:
 The "answer" field must always be filled: True/False items use "True" or "False"; "True or False (Write the Correct Answer)" items use "True" if correct, or the CORRECTED true statement (never the word "False") if incorrect; Matching Type uses the Column B text; Fill/Identification uses the exact word or phrase; Enumeration lists every expected item separated by commas; ${customNotes ? customNotes + '; ' : ''}Essay uses a 1-2 sentence model answer.`;
 }
 
+function shuffleArrayCopy(arr) {
+  const a = arr.slice();
+  for (let k = a.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [a[k], a[j]] = [a[j], a[k]];
+  }
+  return a;
+}
+
+/* AI models have a strong bias toward predictable answer patterns — e.g.
+   putting the correct Multiple Choice option in the same letter slot most
+   of the time, or writing True/False items in a suspiciously regular
+   True-False-True-False (or mostly-True) sequence. Pupils quickly notice
+   and exploit these patterns instead of actually knowing the material, so
+   this randomizes them client-side AFTER generation, without touching any
+   correct-answer content — only positions/order move. */
+function shuffleAnswerPatterns(items, types) {
+  // 1) Multiple Choice — shuffle each item's own choices so the correct
+  //    option lands in a random letter slot. The exported answer key looks
+  //    up the letter by matching the answer TEXT (not position), so this
+  //    is always safe and never breaks the answer key.
+  items.forEach(it => {
+    if (it.format === 'Multiple Choice' && Array.isArray(it.choices) && it.choices.length > 1) {
+      it.choices = shuffleArrayCopy(it.choices);
+    }
+  });
+
+  // 2) True/False, "write the correct answer" T/F, and Custom Answer Set —
+  //    shuffle the ORDER of items WITHIN each of these formats (never moving
+  //    an item across a different format's block) so there's no predictable
+  //    True/False sequence or answer-cycling order. Item content/truth value
+  //    is untouched — only which slot it sits in changes.
+  const shufflableBase = ['True or False', 'True or False (Write the Correct Answer)'];
+  const shufflableFormats = new Set(
+    types.filter(t => shufflableBase.includes(t) || t.replace(/ \(Set \d+\)$/, '') === CUSTOM_ANSWER_TYPE)
+  );
+  const idxByFormat = {};
+  items.forEach((it, idx) => {
+    if (shufflableFormats.has(it.format)) {
+      (idxByFormat[it.format] = idxByFormat[it.format] || []).push(idx);
+    }
+  });
+  Object.keys(idxByFormat).forEach(fmt => {
+    const idxs = idxByFormat[fmt];
+    const shuffled = shuffleArrayCopy(idxs.map(idx => items[idx]));
+    idxs.forEach((idx, k) => { items[idx] = shuffled[k]; });
+  });
+}
+
 async function fetchAIPrompt(prompt, maxTokens = 4096, images = []) {
   const apiKey = getActiveKey();
   if (!apiKey) throw new Error('NO_KEY');
@@ -705,6 +754,7 @@ async function generateSummative(i) {
     }
     // Drop any item still malformed after retries rather than showing it to pupils.
     items = items.filter(it => !isMalformedTFItem(it));
+    shuffleAnswerPatterns(items, types); // remove predictable answer-position/order patterns
     items.forEach((it, idx) => { it.number = idx + 1; });
     while (items.length < itemCount) {
       const fmt = types[items.length % types.length];

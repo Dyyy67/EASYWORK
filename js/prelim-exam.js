@@ -192,6 +192,41 @@ function prelimOnTypeChange(slot, val){
   }
 }
 
+function prelimShuffleArray(arr){
+  const a = arr.slice();
+  for(let k=a.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); [a[k],a[j]]=[a[j],a[k]]; }
+  return a;
+}
+
+/* Same rationale as the Summative Test module: AI models tend to place
+   correct answers in predictable positions/order — Matching Type letters
+   in particular came back with the correct answer ALWAYS the same letter
+   as the row number (row 1→A, row 2→B, ...) since nothing shuffled them.
+   Multiple Choice also tends to cluster the correct option in the same
+   slot, and True/False items in a too-regular sequence. This randomizes
+   all of that AFTER generation, without changing any answer content, so
+   pupils can't exploit the pattern. Returns the (possibly reordered)
+   items plus, for Matching Type, a matchOrder/matchLetterMap the preview
+   and docx export both read from so the exam and answer key always agree. */
+function prelimRandomizeItems(type, items){
+  if(type === 'Multiple Choice'){
+    items.forEach(it => {
+      if(Array.isArray(it.choices) && it.choices.length > 1) it.choices = prelimShuffleArray(it.choices);
+    });
+    return { items, matchOrder: null, matchLetterMap: null };
+  }
+  if(type === 'Matching Type'){
+    const order = prelimShuffleArray(items.map((_,i)=>i));
+    const matchLetterMap = {};
+    order.forEach((origIdx, slotIdx) => { matchLetterMap[origIdx] = String.fromCharCode(65+slotIdx); });
+    return { items, matchOrder: order, matchLetterMap };
+  }
+  if(type === 'True or False' || type === 'True or False (Write the Correct Answer)' || type === CUSTOM_ANSWER_TYPE){
+    return { items: prelimShuffleArray(items), matchOrder: null, matchLetterMap: null };
+  }
+  return { items, matchOrder: null, matchLetterMap: null };
+}
+
 /* Type-specific instructions reused across all 3 parts (mirrors Summative's per-type hints) */
 function prelimTypeInstructions(type, count, isFil, customAnswers){
   const list = (customAnswers||[]).map(a=>'"'+a+'"').join(', ');
@@ -314,7 +349,8 @@ async function prelimGenerate(){
       gfill.style.width = Math.round(((i+0.5)/slots.length)*90) + '%';
       const prompt = prelimBuildPartPrompt(s.type, s.count, subject, grade, quarter, combinedContext, isFil, prelimCustomAnswers[s.slot]);
       const data = await prelimGenerateOnePart(prompt, 'Part '+(i+1));
-      parts.push({ type: s.type, count: s.count, story: data.story||'', items: data.items||[], wordBank: data.wordBank||[] });
+      const rnd = prelimRandomizeItems(s.type, data.items||[]);
+      parts.push({ type: s.type, count: s.count, story: data.story||'', items: rnd.items, wordBank: data.wordBank||[], matchOrder: rnd.matchOrder, matchLetterMap: rnd.matchLetterMap });
     }
 
     gfill.style.width = '100%';
@@ -490,7 +526,8 @@ function prelimRenderPartItemsHtml(p){
   }
   if(p.type === 'Matching Type'){
     const aLines = items.map((it,i)=>`<div>_____ ${i+1}. ${esc(it.q)}</div>`).join('');
-    const bLines = items.map((it,i)=>`<div>${String.fromCharCode(65+i)}. ${esc(it.columnB||it.answer||'')}</div>`).join('');
+    const order = p.matchOrder || items.map((_,i)=>i);
+    const bLines = order.map((origIdx,slotIdx)=>`<div>${String.fromCharCode(65+slotIdx)}. ${esc(items[origIdx].columnB||items[origIdx].answer||'')}</div>`).join('');
     return `<div style="display:flex;gap:20px;"><div style="flex:1;"><strong>Column A</strong>${aLines}</div><div style="flex:1;"><strong>Column B</strong>${bLines}</div></div>`;
   }
   if(p.type === 'Word Bank'){
@@ -515,6 +552,12 @@ function prelimRenderPartAnswerHtml(p, isFil){
       const idx = (it.choices||[]).findIndex(c=>String(c).trim().toLowerCase()===String(it.answer||'').trim().toLowerCase());
       const letter = idx>=0 ? String.fromCharCode(65+idx) : '';
       return `<div><strong>${i+1}.</strong> ${letter}${letter?'. ':''}${esc(it.answer||'')}</div>`;
+    }).join('');
+  }
+  if(p.type === 'Matching Type'){
+    return items.map((it,i)=>{
+      const letter = (p.matchLetterMap && p.matchLetterMap[i]) || '';
+      return `<div><strong>${i+1}.</strong> ${letter}${letter?'. ':''}${esc(it.answer||it.columnB||'')}</div>`;
     }).join('');
   }
   if(p.type === 'Essay / Extended Response'){
@@ -644,7 +687,11 @@ async function prelimDownload(){
       let block = para(isFil ? 'Hanay A' : 'Column A', { bold: true, sz: 22 });
       items.forEach((it,i) => { block += para(`_____  ${i+1}. ${it.q}`, { sz: 22 }); });
       block += para(isFil ? 'Hanay B' : 'Column B', { bold: true, sz: 22 });
-      items.forEach((it,i) => { block += para(`   ${String.fromCharCode(65+i)}. ${it.columnB||it.answer||''}`, { sz: 22 }); });
+      const order = p.matchOrder || items.map((_,i)=>i);
+      order.forEach((origIdx,slotIdx) => {
+        const bText = items[origIdx].columnB || items[origIdx].answer || '';
+        block += para(`   ${String.fromCharCode(65+slotIdx)}. ${bText}`, { sz: 22 });
+      });
       return block;
     }
     if(p.type === 'Word Bank'){
@@ -673,6 +720,12 @@ async function prelimDownload(){
     }
     if(p.type === 'Essay / Extended Response'){
       return para(isFil ? '(Bukas na sagot — tingnan ang mga modelong sagot)' : '(Open-ended — check model answers manually)', { color: '888888', italic: true, sz: 20 });
+    }
+    if(p.type === 'Matching Type'){
+      return items.map((it,i) => {
+        const letter = (p.matchLetterMap && p.matchLetterMap[i]) || '';
+        return para(`${i+1}. ${letter}${letter?'. ':''}${it.answer||it.columnB||''}`, { sz: 20 });
+      }).join('');
     }
     return items.map((it,i) => para(`${i+1}. ${it.answer!==undefined&&it.answer!==null ? it.answer : ''}`, { sz: 20 })).join('');
   };
