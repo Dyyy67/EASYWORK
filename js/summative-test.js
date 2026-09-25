@@ -484,6 +484,27 @@ function shuffleAnswerPatterns(items, types) {
   });
 }
 
+/* Gemini (and occasionally other providers) return a transient 503-style
+   "model is overloaded / high demand, please try again" error during peak
+   usage. This used to fail the ENTIRE generation on the very first hit —
+   which is why success felt like a coin flip. This detects that specific,
+   temporary condition (as opposed to a real quota/auth/bad-request error)
+   so the caller can wait a moment and retry automatically instead of
+   giving up immediately. */
+function isTransientOverloadError(msg) {
+  const m = String(msg || '').toLowerCase();
+  return (
+    m.includes('overloaded') ||
+    m.includes('high demand') ||
+    m.includes('unavailable') ||
+    m.includes('try again later') ||
+    m.includes('503') ||
+    m.includes('internal error') ||
+    m.includes('deadline exceeded') ||
+    m.includes('timeout')
+  );
+}
+
 async function fetchAIPrompt(prompt, maxTokens = 4096, images = []) {
   const apiKey = getActiveKey();
   if (!apiKey) throw new Error('NO_KEY');
@@ -649,9 +670,16 @@ async function fetchAIPrompt(prompt, maxTokens = 4096, images = []) {
       throw new Error(errMsg);
     }
     const data = await resp.json();
-    let raw = '';
-    try { raw = data.candidates[0].content.parts[0].text || ''; }
-    catch (_) { throw new Error('Unexpected Gemini response.'); }
+    const cand = data.candidates && data.candidates[0];
+    if (!cand) {
+      const blockReason = data.promptFeedback?.blockReason;
+      throw new Error(blockReason ? `Gemini blocked this request (reason: ${blockReason}).` : 'Gemini returned no response.');
+    }
+    const raw = (cand.content?.parts || []).map(p => p.text || '').join('');
+    if (!raw) {
+      const finish = cand.finishReason;
+      throw new Error(finish ? `Gemini returned no usable content (reason: ${finish}).` : 'Unexpected Gemini response.');
+    }
     return parseAIJson(raw);
   }
 }
@@ -745,9 +773,25 @@ async function generateSummative(i) {
     let items = [];
     let attempt = 0;
     const maxAttempts = tfFormats.length ? 3 : 1;
+    const maxOverloadRetries = 4; // ~1.5s, 3s, 6s, 9s backoff before giving up on this key
     while (attempt < maxAttempts) {
       attempt++;
-      result = await fetchAIPrompt(prompt, 8192, sumRefImages.map(im => im.dataUrl));
+      let overloadTry = 0;
+      while (true) {
+        try {
+          result = await fetchAIPrompt(prompt, 8192, sumRefImages.map(im => im.dataUrl));
+          break; // success — exit the overload-retry loop
+        } catch (err) {
+          if (err.message === 'QUOTA') throw err; // let the outer catch rotate keys
+          overloadTry++;
+          if (!isTransientOverloadError(err.message) || overloadTry >= maxOverloadRetries) {
+            throw err; // real error, or exhausted retries — let the outer catch report it
+          }
+          const waitMs = 1500 * overloadTry;
+          document.getElementById('ovSub').textContent = `Model is at high demand — retrying in ${Math.round(waitMs / 1000)}s (attempt ${overloadTry}/${maxOverloadRetries - 1})…`;
+          await new Promise(r => setTimeout(r, waitMs));
+        }
+      }
       items = (result.items || []).slice(0, itemCount);
       const badCount = items.filter(isMalformedTFItem).length;
       if (badCount === 0) break;
