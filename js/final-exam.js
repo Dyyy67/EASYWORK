@@ -133,77 +133,10 @@ function feOnTOSChange(){
   if(!qtr.value   && tos.meta?.quarter)  qtr.value   = tos.meta.quarter;
 }
 
-/* ── Robustness settings (Final Exam generation) ──
-   var (not const) on purpose so they can be tuned without touching logic. */
-var FE_CALL_TIMEOUT_MS   = 60000;  // one API call may take at most this long
-var FE_QUOTA_WAIT_MS     = 20000;  // on a 429: wait this long, retry once, only then mark key as quota-hit
-var FE_MAX_ITEMS_PER_CALL = 10;    // big tasks are split so replies never get cut off
-let feGenRunning = false;          // guards against double-clicks / overlapping runs
-let feActiveCtl  = null;           // AbortController of the in-flight API call (for Stop / timeout)
-
-/* Sleep that wakes early when the user presses Stop */
-function feSleep(ms){
-  return new Promise(res => {
-    const end = Date.now() + ms;
-    const tick = () => { if(feGenAbort || Date.now() >= end) res(); else setTimeout(tick, 200); };
-    tick();
-  });
-}
-
-/* Stop button (the Generate button turns into ⏹ Stop while a run is active) */
-function feStop(){
-  feGenAbort = true;
-  const g = document.getElementById('feGStatTxt');
-  if(g) g.textContent = '⏹ Stopping…';
-  if(feActiveCtl){ try{ feActiveCtl.abort(); }catch(_){} }
-  if(_feResolvePause){ _feResolvePause(); _feResolvePause = null; }
-}
-
-/* Always put the Generate UI back to normal, whatever happened */
-function feGenCleanup(){
-  const genBtn = document.getElementById('feGenBtn');
-  if(genBtn){
-    genBtn.disabled = false;
-    genBtn.style.display = '';
-    genBtn.textContent = '🤖 Generate Final Exam';
-    genBtn.onclick = function(){ feGenerate(); };
-  }
-  const rb = document.getElementById('feResumeBtn');
-  if(rb) rb.style.display = 'none';
-  const sp = document.getElementById('feGenSpin');
-  if(sp) sp.style.display = '';
-  const gf = document.getElementById('feGFill');
-  if(gf) gf.style.background = '';
-  _feResolvePause = null;
-  feActiveCtl = null;
-}
-
 /* ── GENERATE ── */
 async function feGenerate(){
-  if(feGenRunning) return;
-  feGenRunning = true;
-  try{
-    await feGenerateInner();
-  }catch(e){
-    console.error('feGenerate failed:', e);
-    const g = document.getElementById('feGStatTxt');
-    if(g) g.textContent = '❌ ' + (e && e.message ? e.message : e);
-    toast('❌ Generation error: ' + (e && e.message ? e.message : e), 'te');
-  }finally{
-    feGenCleanup();
-    feGenRunning = false;
-  }
-}
-
-async function feGenerateInner(){
   /* Must have at least one API key */
-  let apiKey = getActiveKey();
-  if(!apiKey && mkKeys.length){
-    /* Every saved key is flagged quota-hit. Those flags are saved in the browser and a
-       temporary rate-limit can leave them set, so clear them and try the keys again. */
-    resetAllQuotas();
-    apiKey = getActiveKey();
-  }
+  const apiKey = getActiveKey();
   if(!apiKey){
     toast('⚠️ No API key found. Open the API Key Manager at the top and add a Gemini or Groq key first.','te');
     document.querySelector('.topbar')?.scrollIntoView({behavior:'smooth'});
@@ -273,14 +206,7 @@ async function feGenerateInner(){
     lessonAllocs.forEach((lesson, li) => {
       const count = cogGrid[ci][li];
       if(count > 0){
-        /* Split big tasks into batches of at most FE_MAX_ITEMS_PER_CALL so a reply is never cut off */
-        const parts = Math.ceil(count / FE_MAX_ITEMS_PER_CALL);
-        let left = count;
-        for(let p = 0; p < parts; p++){
-          const c = Math.ceil(left / (parts - p));
-          left -= c;
-          tasks.push({ cogLabel, cogShort: COG_SHORT[ci], cogDiff: COG_DIFFICULTY[ci], cogIdx: ci, lesson, lessonIdx: li, count: c });
-        }
+        tasks.push({ cogLabel, cogShort: COG_SHORT[ci], cogDiff: COG_DIFFICULTY[ci], cogIdx: ci, lesson, lessonIdx: li, count });
       }
     });
   });
@@ -291,16 +217,13 @@ async function feGenerateInner(){
   /* ── Step 4: UI setup ── */
   feGenAbort = false;
   const genBtn = document.getElementById('feGenBtn');
-  genBtn.disabled = false;
-  genBtn.style.display = '';
-  genBtn.textContent = '⏹ Stop';
-  genBtn.onclick = feStop;
+  genBtn.disabled = true;
+  genBtn.textContent = '⏳ Generating…';
   const gp    = document.getElementById('feGP');
   const gfill = document.getElementById('feGFill');
   const gstat = document.getElementById('feGStatTxt');
   gp.classList.add('show');
   gfill.style.width = '0%';
-  gfill.style.background = '';
   feExamItems = [];
 
   const subject = document.getElementById('feMSub')?.value  || tos.meta?.subject || 'the subject';
@@ -316,8 +239,6 @@ async function feGenerateInner(){
 
   let globalNum = 1;
   let tasksDone = 0;
-  let phCount   = 0;   // number of placeholder items (could not be generated)
-  let consecFail = 0;  // consecutive tasks that produced nothing (service down / key invalid)
 
   /* Fallback reference text from the global upload box — used only when a competency
      row has no reference files of its own. Item count & order still come from the TOS. */
@@ -326,26 +247,6 @@ async function feGenerateInner(){
   /* ── Step 5: Generate each task ── */
   for(const task of tasks){
     if(feGenAbort) break;
-
-    if(consecFail >= 3){
-      /* The AI service is clearly not answering — stop calling it (each call can wait a long time)
-         and fill the rest with placeholders so the exam layout and item count stay correct. */
-      if(consecFail === 3){
-        consecFail++;
-        toast('⚠️ The AI service is not responding — skipping the rest. Check your key and internet, then click Generate again.', 'te');
-      }
-      for(let p = 0; p < task.count; p++){
-        feExamItems.push({
-          num: globalNum++, topic: task.lesson.topic, competency: task.lesson.competency,
-          cogLabel: task.cogLabel, cogIdx: task.cogIdx,
-          question: '[' + task.cogShort + ' — ' + task.lesson.topic + '] Item ' + (p+1) + ' (regenerate)',
-          choices: ['Option A','Option B','Option C','Option D'], answer: 'A'
-        });
-      }
-      phCount += task.count;
-      tasksDone++;
-      continue;
-    }
 
     gstat.textContent =
       `[${tasksDone+1}/${totalTasks}] "${task.lesson.topic}" — ${task.cogShort} (${task.count} item${task.count>1?'s':''})…`;
@@ -420,9 +321,7 @@ Rules:
     try{
       const items = await feCallAnthropicAPI(prompt, task.count, task.cogShort, task.lesson.topic, isFilipinoSubject);
       /* items is ALWAYS exactly task.count long (padded if needed) */
-      consecFail = (items.length && items.every(it => it._ph)) ? consecFail + 1 : 0;
       items.forEach(it => {
-        if(it._ph) phCount++;
         /* Alphabetize choices A→D and re-map the correct answer letter to match */
         const alpha = feAlphabetizeChoices(it.choices, it.answer);
         feExamItems.push({
@@ -437,10 +336,7 @@ Rules:
         });
       });
     } catch(e){
-      if(feGenAbort || (e && e.message === 'STOPPED')) break;
       console.error('Error:', e);
-      phCount += task.count;
-      consecFail++;
       toast('⚠️ Error for "' + task.lesson.topic + '" (' + task.cogShort + '): ' + e.message, 'te');
       /* Still pad so total item count stays correct */
       for(let p = 0; p < task.count; p++){
@@ -469,21 +365,13 @@ Rules:
   _feResolvePause = null; // clear any pending pause
 
   if(feExamItems.length){
-    if(feGenAbort){
-      gstat.textContent = '⏹ Stopped — ' + feExamItems.length + ' item(s) generated so far.';
-    } else if(phCount){
-      gstat.textContent = '⚠️ ' + feExamItems.length + ' items made, but ' + phCount + ' could not be generated (marked "regenerate"). Click Generate again.';
-    } else {
-      gstat.textContent = '✅ ' + feExamItems.length + ' items generated!';
-    }
-    setTimeout(() => gp.classList.remove('show'), (feGenAbort || phCount) ? 8000 : 2500);
+    gstat.textContent = '✅ ' + feExamItems.length + ' items generated!';
+    setTimeout(() => gp.classList.remove('show'), 2500);
     feRenderPreview();
     feDebounceSave();
     document.getElementById('feDlBtn').style.display = '';
     document.getElementById('fePreviewWrap').scrollIntoView({behavior:'smooth', block:'start'});
-    if(feGenAbort)    toast('⏹ Stopped — ' + feExamItems.length + ' item(s) kept.', 'ti');
-    else if(phCount)  toast('⚠️ Exam generated, but ' + phCount + ' item(s) failed. Click Generate again to retry.', 'te');
-    else              toast('✅ Final Exam generated — ' + feExamItems.length + ' items!', 'ts');
+    toast('✅ Final Exam generated — ' + feExamItems.length + ' items!', 'ts');
   } else {
     gstat.textContent = 'No items generated. Check your TOS data and API key.';
     setTimeout(() => gp.classList.remove('show'), 3500);
@@ -501,26 +389,6 @@ Rules:
    or the provider's documented quota error codes). All other errors are thrown as
    plain Error(message) so they do NOT trigger false quota-hit marking. */
 async function feRawCall(prompt, apiKey, provider){
-  const ctl = new AbortController();
-  feActiveCtl = ctl;
-  let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, FE_CALL_TIMEOUT_MS);
-  try{
-    return await feRawCallInner(prompt, apiKey, provider, ctl.signal);
-  }catch(e){
-    if(e && e.name === 'AbortError'){
-      throw new Error(timedOut ? 'Request timed out — the AI service did not respond.' : 'STOPPED');
-    }
-    throw e;
-  }finally{
-    clearTimeout(timer);
-    if(feActiveCtl === ctl) feActiveCtl = null;
-  }
-}
-
-async function feRawCallInner(prompt, apiKey, provider, signal){
-  /* Every fetch below goes through this wrapper so it can be aborted (timeout / Stop) */
-  const fetch = (u, o) => globalThis.fetch(u, Object.assign({}, o, { signal }));
   const SYS = 'You are a test-question generator. Return ONLY a valid JSON array with no markdown, no backticks, no extra text before or after the array.';
 
   /* Helper: decides if an HTTP error response is a REAL quota/rate-limit.
@@ -574,7 +442,7 @@ async function feRawCallInner(prompt, apiKey, provider, signal){
   } else if(provider === 'deepseek'){
     const r = await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'deepseek-chat', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'deepseek-chat', max_tokens:2048, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -604,7 +472,7 @@ async function feRawCallInner(prompt, apiKey, provider, signal){
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,
         'HTTP-Referer':'https://localhost','X-Title':'Exam Generator'},
-      body:JSON.stringify({ model:'openrouter/free', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'openrouter/free', max_tokens:2048, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -678,7 +546,7 @@ async function feRawCallInner(prompt, apiKey, provider, signal){
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{role:'user',parts:[{text:SYS+'\n\n'+prompt}]}],
-        generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',thinkingConfig:{thinkingBudget:0}}
+        generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'}
       })
     });
     if(!r.ok){
@@ -692,62 +560,31 @@ async function feRawCallInner(prompt, apiKey, provider, signal){
   }
 }
 
-/* Clean up one raw item into the shape the exam uses (or null if unusable) */
-function feNormItem(it){
-  if(!it || typeof it.question !== 'string' || !it.question.trim() || !Array.isArray(it.choices)) return null;
-  return {
-    question: it.question.trim(),
-    choices:  it.choices.length===4
-      ? it.choices.map(c=>String(c||'').trim()||'—')
-      : [...it.choices.map(c=>String(c||'').trim()), 'Option C','Option D'].slice(0,4),
-    answer: String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A')
-  };
-}
-
-/* If a reply was cut off mid-array, rescue every COMPLETE {...} item that came before the cut */
-function feSalvageItems(raw){
-  const s0 = raw.indexOf('[');
-  if(s0 < 0) return [];
-  const s = raw.slice(s0 + 1);
-  const out = [];
-  let depth = 0, start = -1, inStr = false, esc = false;
-  for(let i = 0; i < s.length; i++){
-    const ch = s[i];
-    if(inStr){ if(esc) esc = false; else if(ch === '\\') esc = true; else if(ch === '"') inStr = false; continue; }
-    if(ch === '"'){ inStr = true; continue; }
-    if(ch === '{'){ if(depth === 0) start = i; depth++; }
-    else if(ch === '}'){
-      if(depth > 0) depth--;
-      if(depth === 0 && start >= 0){
-        try{ const o = feNormItem(JSON.parse(s.slice(start, i + 1))); if(o) out.push(o); }catch(_){}
-        start = -1;
-      }
-    }
-  }
-  return out;
-}
-
 /* Parse JSON array from raw AI text */
 function feParseItems(raw){
   if(!raw) return [];
   // Strip markdown fences
-  raw = String(raw).replace(/^\s*```json/i,'').replace(/^\s*```/,'').replace(/```\s*$/,'').trim();
+  raw = raw.replace(/^\s*```json/i,'').replace(/^\s*```/,'').replace(/```\s*$/,'').trim();
   // Extract first [...] block
   const m = raw.match(/\[[\s\S]*\]/);
-  if(m){
-    let block = m[0]
-      .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")  // smart quotes
-      .replace(/,\s*([}\]])/g,'$1')                                    // trailing commas
-      .replace(/}\s*{/g,'},{');                                        // missing comma between objects
-    try{
-      const arr = JSON.parse(block);
-      if(Array.isArray(arr)){
-        const good = arr.map(feNormItem).filter(Boolean);
-        if(good.length) return good;
-      }
-    }catch(e){ /* fall through to salvage */ }
-  }
-  return feSalvageItems(raw);
+  if(!m) return [];
+  let block = m[0]
+    .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")  // smart quotes
+    .replace(/,\s*([}\]])/g,'$1')                                    // trailing commas
+    .replace(/}\s*{/g,'},{');                                        // missing comma between objects
+  try{
+    const arr = JSON.parse(block);
+    if(!Array.isArray(arr)) return [];
+    return arr
+      .filter(it => it && typeof it.question==='string' && it.question.trim() && Array.isArray(it.choices))
+      .map(it=>({
+        question: it.question.trim(),
+        choices:  it.choices.length===4
+          ? it.choices.map(c=>String(c||'').trim()||'—')
+          : [...it.choices.map(c=>String(c||'').trim()), 'Option C','Option D'].slice(0,4),
+        answer: String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A')
+      }));
+  }catch(e){ return []; }
 }
 
 /* ── Alphabetize each item's 4 choices (A→D by text) and keep the
@@ -764,97 +601,83 @@ function feAlphabetizeChoices(choices, answerLetter){
   return { choices: sorted, answer: letters[newIdx] };
 }
 
-/* Main call — gets exactly `needed` items, but ALWAYS finishes:
-   • every API call has a timeout
-   • a key that keeps failing (non-quota) is skipped after 3 tries; if no other key is left we stop
-   • a hard cap on attempts per task; anything still missing becomes a "(regenerate)" placeholder
-   • quota handling is unchanged in spirit: confirmed quota → mark key → rotate → pause if none left */
+/* Main call — retries until we have exactly `needed` items */
 async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipinoLang){
-  const MAX_PER_KEY = 3;   // failed/empty attempts allowed on one key
-  const MAX_TOTAL   = 8;   // hard ceiling of non-quota attempts for this task
-  const gstat = document.getElementById('feGStatTxt');
-  let collected = [];
-  let attempts  = 0;
-  const keyFails    = {};         // key -> consecutive failed attempts
-  const quotaWaited = {};         // key -> true once a wait-and-retry was used
-  const skipKeys    = new Set();  // keys given up on for this task
+  const MAX_ATTEMPTS   = 4;  // content retries per key
+  const MAX_KEY_ROTATE = mkKeys.length + 1; // max key rotations
+  let collected  = [];
+  let keyRotates = 0;
 
-  while(collected.length < needed && attempts < MAX_TOTAL){
-    if(feGenAbort) throw new Error('STOPPED');
-
-    let apiKey = getActiveKey();
+  while(collected.length < needed && keyRotates <= MAX_KEY_ROTATE){
+    const apiKey = getActiveKey();
     if(!apiKey){
-      feGenPause('⚠️ All API keys hit quota. Add a new key (or reset quotas) then click Resume.');
+      feGenPause('⚠️ All API keys hit quota. Add a new key then click Resume.');
       await feWaitForResume();
-      if(feGenAbort) throw new Error('STOPPED');
-      apiKey = getActiveKey();
-      if(!apiKey) break;
-      Object.keys(quotaWaited).forEach(k => delete quotaWaited[k]);
-    }
-    if(skipKeys.has(apiKey)){
-      const alt = mkKeys.find(k => !k.quotaHit && !skipKeys.has(k.key));
-      if(!alt) break;            // nothing else to try → placeholders
-      apiKey = alt.key;
+      /* After resume, check again */
+      if(!getActiveKey()) break;
+      continue;
     }
 
-    const keyObj   = mkKeys.find(k => k.key === apiKey) || {};
+    const keyObj   = mkKeys[mkActive] || {};
     const provider = feDetectProvider(apiKey, keyObj.provider);
-    const remaining = needed - collected.length;
-    const isRetry   = attempts > 0 || collected.length > 0;
+    let attempts   = 0;
+    let keyExhausted = false;
 
-    const retryNote = isRetry
-      ? (isFilipinoLang
-          ? `\n\nMAHALAGA: Kailangan mong magbigay ng eksaktong ${remaining} tanong. Huwag magbigay ng mas kaunti.`
-          : `\n\nIMPORTANT: You MUST return exactly ${remaining} question${remaining>1?'s':''}. Do not return fewer.`)
-      : '';
-    const retryPrompt = isRetry
-      ? prompt.replace(/Generate exactly \d+|Gumawa ng eksaktong \d+/, isFilipinoLang ? `Gumawa ng eksaktong ${remaining}` : `Generate exactly ${remaining}`) + retryNote
-      : prompt;
+    while(collected.length < needed && attempts < MAX_ATTEMPTS && !keyExhausted){
+      attempts++;
+      const remaining = needed - collected.length;
 
-    attempts++;
-    try{
-      const raw   = await feRawCall(retryPrompt, apiKey, provider);
-      const items = feParseItems(raw);
-      items.forEach(it => { if(collected.length < needed) collected.push(it); });
-      if(!items.length) throw new Error('EMPTY');   // reply had no usable questions
-      keyFails[apiKey]    = 0;
-      quotaWaited[apiKey] = false;
-      if(collected.length >= needed) break;
-      await feSleep(800);                           // got some, ask again for the rest
+      const retryNote = attempts > 1
+        ? (isFilipinoLang
+            ? `\n\nMAHALAGA: Kailangan mong magbigay ng eksaktong ${remaining} tanong. Huwag magbigay ng mas kaunti.`
+            : `\n\nIMPORTANT: You MUST return exactly ${remaining} question${remaining>1?'s':''}. Do not return fewer.`)
+        : '';
+      const retryPrompt = attempts > 1
+        ? prompt.replace(/Generate exactly \d+|Gumawa ng eksaktong \d+/, isFilipinoLang ? `Gumawa ng eksaktong ${remaining}` : `Generate exactly ${remaining}`) + retryNote
+        : prompt;
 
-    } catch(e){
-      if(feGenAbort || (e && e.message === 'STOPPED')) throw new Error('STOPPED');
+      try{
+        const raw   = await feRawCall(retryPrompt, apiKey, provider);
+        const items = feParseItems(raw);
+        items.forEach(it => { if(collected.length < needed) collected.push(it); });
 
-      if(e && e.message === 'QUOTA'){
-        attempts--;                                  // a quota hit does not use up an attempt
-        if(!quotaWaited[apiKey]){
-          /* First 429 for this key: could be a short per-minute limit → wait, then retry once */
-          quotaWaited[apiKey] = true;
-          if(gstat) gstat.textContent = `⏳ Rate limit — waiting ${Math.round(FE_QUOTA_WAIT_MS/1000)}s, then retrying…`;
-          await feSleep(FE_QUOTA_WAIT_MS);
-          continue;
-        }
-        /* Confirmed quota: mark this key and rotate (same behaviour as before) */
-        markQuota(apiKey);
-        const nextKey = getActiveKey();
-        if(nextKey && nextKey !== apiKey){
-          const nextName = (mkKeys[mkActive] && mkKeys[mkActive].name) || 'next key';
-          feGenPause(`⚠️ Quota hit confirmed. Rotating to "${nextName}"… resuming in 3s`);
-          await feSleep(3000);
-          feGenResume();
+        if(collected.length >= needed) break;
+
+        if(attempts < MAX_ATTEMPTS)
+          await new Promise(r => setTimeout(r, 800));
+
+      } catch(e){
+        const isQuota = e.message === 'QUOTA'; // ONLY the typed signal from feRawCall
+
+        if(isQuota){
+          /* Mark this key as quota-hit and rotate */
+          markQuota(apiKey);
+          keyExhausted  = true;
+          keyRotates++;
+
+          /* Check if there's still another valid key available */
+          const nextKey = getActiveKey();
+          if(nextKey && nextKey !== apiKey){
+            /* Pause generation visually, then auto-resume after brief delay */
+            const nextName = mkKeys[mkActive]?.name || 'next key';
+            feGenPause(`⚠️ Real quota hit confirmed. Rotating to "${nextName}"… resuming in 3s`);
+            await new Promise(r => setTimeout(r, 3000));
+            feGenResume();
+          } else {
+            /* No keys left — pause and wait for user to add/reset a key */
+            feGenPause('🚫 All keys hit quota. Reset quotas or add a new key, then click Resume.');
+            await feWaitForResume();
+            keyRotates = 0; // reset so we try again
+          }
+        } else if(attempts >= MAX_ATTEMPTS){
+          /* Non-quota error, out of retries — skip with placeholder */
+          console.warn('feCallAnthropicAPI non-quota error after max attempts:', e.message);
+          break;
         } else {
-          feGenPause('🚫 All keys hit quota. Reset quotas or add a new key, then click Resume.');
-          await feWaitForResume();
-          Object.keys(quotaWaited).forEach(k => delete quotaWaited[k]);
+          console.warn('feCallAnthropicAPI non-quota error, will retry:', e.message);
+          await new Promise(r => setTimeout(r, 1000));
         }
-        continue;
       }
-
-      /* Non-quota problem (timeout, 5xx, bad/empty reply, network…) */
-      console.warn('feCallAnthropicAPI non-quota error:', e && e.message);
-      keyFails[apiKey] = (keyFails[apiKey] || 0) + 1;
-      if(keyFails[apiKey] >= MAX_PER_KEY) skipKeys.add(apiKey);
-      await feSleep(1000);
     }
   }
 
@@ -864,8 +687,7 @@ async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipi
     collected.push({
       question: `[${cogShort} — ${topicLabel}] Item ${n} — could not generate (check key/quota)`,
       choices:  ['Option A', 'Option B', 'Option C', 'Option D'],
-      answer:   'A',
-      _ph:      true
+      answer:   'A'
     });
   }
 
@@ -884,6 +706,7 @@ function feGenPause(msg){
 
   if(gstat)     gstat.textContent = '⏸ ' + msg;
   if(gfill){    gfill.style.background = '#FFA000'; gfill.style.transition = 'background 0.4s'; }
+  if(genBtn)    genBtn.style.display = 'none';
   if(resumeBtn){ resumeBtn.style.display = ''; resumeBtn.textContent = '▶ Resume'; }
   if(spin)      spin.style.display = 'none'; // hide spinner while paused
   toast('⏸ ' + msg, 'ti');
@@ -897,6 +720,7 @@ function feGenResume(){
   const gstat     = document.getElementById('feGStatTxt');
 
   if(gfill){    gfill.style.background = ''; } // restore blue
+  if(genBtn)    genBtn.style.display = 'none';  // still generating
   if(resumeBtn) resumeBtn.style.display = 'none';
   if(spin)      spin.style.display = '';        // show spinner again
   if(gstat)     gstat.textContent = 'Resuming…';
