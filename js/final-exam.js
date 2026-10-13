@@ -244,113 +244,82 @@ async function feGenerate(){
      row has no reference files of its own. Item count & order still come from the TOS. */
   const feGlobalRefContext = feBuildRefContext();
 
-  /* ── Step 5: Generate each task ── */
-  for(const task of tasks){
-    if(feGenAbort) break;
+  /* ── Step 5: Generate in BATCHES ──
+     Old behaviour: 1 API call per (lesson × cognitive level) → dozens of calls,
+     each retried up to 4×, which burned the free quota almost instantly.
+     New behaviour: several lessons/levels are packed into ONE call (max
+     FE_MAX_ITEMS_PER_CALL items), so a typical 40-item exam needs ~3–5 calls.
+     Item counts, cognitive levels and numbering order still come from the TOS. */
+  const cells = [];   /* one cell = (lesson, cog level, count) — in TOS order (cog level → lesson) */
+  tasks.forEach(t => {
+    let left = t.count;
+    while(left > 0){
+      const n = Math.min(left, FE_MAX_ITEMS_PER_CALL);
+      cells.push({ task: t, count: n, items: [] });
+      left -= n;
+    }
+  });
+  const batches = feBuildBatches(cells, FE_MAX_ITEMS_PER_CALL);
+  const ctx = { subject, grade, isFil: isFilipinoSubject, globalRef: feGlobalRefContext, seen: new Set() };
 
-    gstat.textContent =
-      `[${tasksDone+1}/${totalTasks}] "${task.lesson.topic}" — ${task.cogShort} (${task.count} item${task.count>1?'s':''})…`;
-    gfill.style.width = Math.round(tasksDone / totalTasks * 90) + '%';
+  let batchesDone = 0;
+  try{
+    for(const batch of batches){
+      if(feGenAbort) break;
 
-    const competencyLine = task.lesson.competency
-      ? `Learning Competency: "${task.lesson.competency}"`
-      : `Topic/Lesson: "${task.lesson.topic}"`;
+      gstat.textContent = `[${batchesDone+1}/${batches.length}] ${feBatchLabel(batch)}…`;
+      gfill.style.width = Math.round(batchesDone / batches.length * 90) + '%';
 
-    /* Per-competency reference files take priority; fall back to the global upload */
-    const lessonRefFiles = task.lesson.refFiles || [];
-    const feRefContext = lessonRefFiles.length
-      ? lessonRefFiles.map((f,fi)=>`--- FILE ${fi+1}: ${f.name} ---\n${f.text}`).join('\n\n').slice(0,12000)
-      : feGlobalRefContext;
+      try{
+        await feGenerateBatch(batch, ctx);
+      } catch(e){
+        console.error('Final Exam batch error:', e);
+        toast('⚠️ ' + feBatchLabel(batch) + ': ' + (e.message || e), 'te');
+        if(e.fatal) break;   /* bad/blocked key — don't keep hammering the API */
+      }
 
-    const refLineFil = feRefContext
-      ? `\nSANGGUNIANG NILALAMAN (ibatay ang mga tanong dito kung may kaugnayan sa aralin):\n"""\n${feRefContext}\n"""\n`
-      : '';
-    const refLineEn = feRefContext
-      ? `\nREFERENCE CONTENT (base the questions on this material when relevant to the lesson):\n"""\n${feRefContext}\n"""\n`
-      : '';
-
-    const prompt = isFilipinoSubject
-? `Ikaw ay isang guro na gumagawa ng Pangwakas na Pagsusulit (Final Examination) sa ${subject} para sa ${grade}.
-${competencyLine}
-Antas ng Pag-iisip (Cognitive Level): ${task.cogLabel} (${task.cogDiff})
-${refLineFil}
-
-Gumawa ng eksaktong ${task.count} tanong na may apat na pagpipilian (multiple choice) sa antas na "${task.cogShort}" tungkol sa araling ito.
-
-Mga Panuntunan:
-- Lahat ng tanong ay dapat nasa "${task.cogShort}" na antas ng pag-iisip (${task.cogDiff}).
-- Bawat tanong ay may eksaktong 4 na pagpipilian: A, B, C, D.
-- Isang tamang sagot lang bawat tanong — walang dalawang pagpipilian na parehong tama o parehong maaaring tama.
-- Siguraduhing ang letra sa "answer" (A, B, C, o D) ay TUMUTUGMA nang eksakto sa tamang pagpipilian sa "choices". Bago sumagot, balikan at tingnan muli kung tama ang letrang inilagay mo.
-- ISULAT SA FILIPINO — simpleng salita na naiintindihan ng mga mag-aaral ng Grades 4–6.
-- Huwag isama ang letra ng sagot sa loob ng tanong.
-- Sumagot LAMANG ng valid JSON array. Walang markdown, walang backticks, walang paliwanag bago o pagkatapos.
-
-[
-  {
-    "question": "Tanong dito?",
-    "choices": ["Pagpipilian A", "Pagpipilian B", "Pagpipilian C", "Pagpipilian D"],
-    "answer": "A"
+      batchesDone++;
+      if(batchesDone < batches.length && !feGenAbort) await feSleep(1500);   /* gentle pacing */
+    }
+  } catch(e){
+    console.error('Final Exam generation error:', e);
+    toast('⚠️ Generation stopped: ' + (e.message || e), 'te');
   }
-]`
-:
-`You are a school teacher writing a Final Examination for ${grade} ${subject}.
-${competencyLine}
-Cognitive Level: ${task.cogLabel} (${task.cogDiff})
-${refLineEn}
 
-Generate exactly ${task.count} multiple choice question${task.count>1?'s':''} at the "${task.cogShort}" cognitive level about this lesson/competency.
-
-Rules:
-- All questions MUST be at the "${task.cogShort}" cognitive level (${task.cogDiff}).
-- Each question has exactly 4 choices: A, B, C, D.
-- Exactly one correct answer per question — no two choices may both be correct or both be defensible as correct.
-- The "answer" letter (A, B, C, or D) MUST match the actually correct choice in "choices" exactly. Re-check each item before responding to confirm the letter is accurate.
-- Language appropriate for ${grade} level.
-- Do NOT include the answer letter inside the question text.
-- Respond ONLY with a valid JSON array. No markdown, no backticks, no explanation before or after.
-
-[
-  {
-    "question": "Question text here?",
-    "choices": ["Choice A text", "Choice B text", "Choice C text", "Choice D text"],
-    "answer": "A"
-  }
-]`;
-
-    try{
-      const items = await feCallAnthropicAPI(prompt, task.count, task.cogShort, task.lesson.topic, isFilipinoSubject);
-      /* items is ALWAYS exactly task.count long (padded if needed) */
-      items.forEach(it => {
-        /* Alphabetize choices A→D and re-map the correct answer letter to match */
-        const alpha = feAlphabetizeChoices(it.choices, it.answer);
-        feExamItems.push({
-          num:        globalNum++,
-          topic:      task.lesson.topic,
-          competency: task.lesson.competency,
-          cogLabel:   task.cogLabel,
-          cogIdx:     task.cogIdx,
-          question:   it.question,
-          choices:    alpha.choices,
-          answer:     alpha.answer
-        });
+  /* Assemble in TOS order (cog level → lesson) so numbering matches the TOS table.
+     Any slot the AI could not fill gets a clearly-marked placeholder so counts stay exact. */
+  let realCount = 0;
+  cells.forEach(cell => {
+    const t = cell.task;
+    const got = cell.items.slice(0, cell.count);
+    got.forEach(it => {
+      /* Alphabetize choices A→D and re-map the correct answer letter to match */
+      const alpha = feAlphabetizeChoices(it.choices, it.answer);
+      feExamItems.push({
+        num:        globalNum++,
+        topic:      t.lesson.topic,
+        competency: t.lesson.competency,
+        cogLabel:   t.cogLabel,
+        cogIdx:     t.cogIdx,
+        question:   it.question,
+        choices:    alpha.choices,
+        answer:     alpha.answer
       });
-    } catch(e){
-      console.error('Error:', e);
-      toast('⚠️ Error for "' + task.lesson.topic + '" (' + task.cogShort + '): ' + e.message, 'te');
-      /* Still pad so total item count stays correct */
-      for(let p = 0; p < task.count; p++){
+      realCount++;
+    });
+    if(!feGenAbort){
+      for(let p = got.length; p < cell.count; p++){
         feExamItems.push({
-          num: globalNum++, topic: task.lesson.topic, competency: task.lesson.competency,
-          cogLabel: task.cogLabel, cogIdx: task.cogIdx,
-          question: '[' + task.cogShort + ' — ' + task.lesson.topic + '] Item ' + (p+1) + ' (regenerate)',
+          num: globalNum++, topic: t.lesson.topic, competency: t.lesson.competency,
+          cogLabel: t.cogLabel, cogIdx: t.cogIdx,
+          question: '[' + t.cogShort + ' — ' + t.lesson.topic + '] Item ' + (p+1) + ' (regenerate)',
           choices: ['Option A','Option B','Option C','Option D'], answer: 'A'
         });
       }
     }
-
-    tasksDone++;
-  }
+  });
+  /* If nothing real was generated, don't show a preview full of placeholders */
+  if(realCount === 0) feExamItems = [];
 
   gfill.style.width = '100%';
   gfill.style.background = ''; // restore default color
@@ -388,8 +357,85 @@ Rules:
    Throws Error('QUOTA') ONLY when the API confirms a real rate-limit/quota (HTTP 429
    or the provider's documented quota error codes). All other errors are thrown as
    plain Error(message) so they do NOT trigger false quota-hit marking. */
+/* ── Tunables ── */
+const FE_MAX_ITEMS_PER_CALL = 15;     /* items requested per API call (batching = far fewer calls) */
+const FE_MAX_REF_CHARS      = 12000;  /* max reference text sent per call */
+const FE_REQUEST_TIMEOUT_MS = 75000;  /* a hung request can no longer spin forever */
+const FE_FATAL_RE = /api key not valid|invalid api key|incorrect api key|unauthori[sz]ed|permission denied|\b401\b|\b403\b/i;
+
+function feSleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+/* Visible countdown while we wait out a rate limit (instead of looking frozen) */
+async function feCountdown(sec, label){
+  const el = document.getElementById('feGStatTxt');
+  for(let s = Math.ceil(sec); s > 0; s--){
+    if(feGenAbort) return;
+    if(el) el.textContent = '⏳ ' + label + ' — retrying in ' + s + 's…';
+    await feSleep(1000);
+  }
+}
+
+/* Info about the most recent HTTP 429, filled in by feFetch */
+let _feLast429 = null;
+
+function feParse429(r, body){
+  let retryAfter = parseFloat(r.headers.get('retry-after')) || 0;
+  const txt = JSON.stringify(body || {}).toLowerCase();
+  const details = (body && body.error && body.error.details) || [];
+  details.forEach(d => { if(d && d.retryDelay){ const s = parseFloat(d.retryDelay); if(s) retryAfter = s; } });
+  let m = txt.match(/retry in ([\d.]+)\s*s/) || txt.match(/try again in ([\d.]+)\s*s/);
+  if(m) retryAfter = parseFloat(m[1]);
+  m = txt.match(/try again in (\d+)m([\d.]+)?s?/);
+  if(m) retryAfter = parseInt(m[1]) * 60 + (parseFloat(m[2]) || 0);
+  /* A DAILY / billing quota will not recover by waiting a minute — rotate to the next key instead */
+  const hard = txt.includes('perday') || txt.includes('per day') || txt.includes('daily') ||
+              txt.includes('insufficient_quota');
+  return { retryAfter, daily: hard };
+}
+
+/* fetch() with a timeout + 429 diagnostics */
+async function feFetch(url, opts){
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FE_REQUEST_TIMEOUT_MS);
+  try{
+    const r = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
+    if(r.status === 429){
+      let body = null;
+      try{ body = await r.clone().json(); }catch(_){}
+      _feLast429 = feParse429(r, body);
+    }
+    return r;
+  } catch(e){
+    if(e && e.name === 'AbortError')
+      throw new Error('The AI service did not respond within ' + Math.round(FE_REQUEST_TIMEOUT_MS/1000) + 's. Please try again.');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* Public raw call. A short per-minute rate limit (HTTP 429) is WAITED OUT and retried on the
+   same key. Only a daily/billing quota (or repeated 429s) throws Error('QUOTA'), which makes
+   the caller rotate to the next key. */
 async function feRawCall(prompt, apiKey, provider){
-  const SYS = 'You are a test-question generator. Return ONLY a valid JSON array with no markdown, no backticks, no extra text before or after the array.';
+  const MAX_WAITS = 3;
+  for(let w = 0; ; w++){
+    _feLast429 = null;
+    try{
+      return await feRawCallOnce(prompt, apiKey, provider);
+    } catch(e){
+      if(e.message !== 'QUOTA') throw e;
+      const info = _feLast429 || {};
+      if(info.daily || w >= MAX_WAITS || feGenAbort) throw e;
+      const wait = Math.min(Math.max(info.retryAfter || 0, 10 + w * 10) + 1, 70);
+      await feCountdown(wait, 'Rate limit reached');
+    }
+  }
+}
+
+async function feRawCallOnce(prompt, apiKey, provider){
+  const fetch = (u, o) => feFetch(u, o);   /* every provider branch below now gets timeout + 429 info */
+  const SYS = 'You are a test-question generator. Return ONLY valid JSON in exactly the format requested — no markdown, no backticks, no extra text before or after.';
 
   /* Helper: decides if an HTTP error response is a REAL quota/rate-limit.
      Only returns true on HTTP 429 OR specific quota-related error codes from each provider. */
@@ -442,7 +488,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'deepseek'){
     const r = await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'deepseek-chat', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'deepseek-chat', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -472,7 +518,7 @@ async function feRawCall(prompt, apiKey, provider){
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,
         'HTTP-Referer':'https://localhost','X-Title':'Exam Generator'},
-      body:JSON.stringify({ model:'openrouter/free', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'openrouter/free', max_tokens:4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -546,7 +592,7 @@ async function feRawCall(prompt, apiKey, provider){
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{role:'user',parts:[{text:SYS+'\n\n'+prompt}]}],
-        generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'}
+        generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',thinkingConfig:{thinkingBudget:0}}
       })
     });
     if(!r.ok){
@@ -560,31 +606,247 @@ async function feRawCall(prompt, apiKey, provider){
   }
 }
 
-/* Parse JSON array from raw AI text */
+/* Pull complete {...} objects out of possibly-truncated JSON (e.g. output cut off at the token cap) */
+function feSalvageObjects(raw){
+  const start = raw.indexOf('[');
+  const s = start >= 0 ? raw.slice(start + 1) : raw;
+  const out = [];
+  let depth = 0, inStr = false, esc = false, objStart = -1;
+  for(let i = 0; i < s.length; i++){
+    const ch = s[i];
+    if(inStr){
+      if(esc) esc = false;
+      else if(ch === '\\') esc = true;
+      else if(ch === '"') inStr = false;
+      continue;
+    }
+    if(ch === '"'){ inStr = true; continue; }
+    if(ch === '{'){ if(depth === 0) objStart = i; depth++; }
+    else if(ch === '}'){
+      depth--;
+      if(depth === 0 && objStart >= 0){
+        try{ out.push(JSON.parse(s.slice(objStart, i + 1).replace(/,\s*([}\]])/g, '$1'))); }catch(_){}
+        objStart = -1;
+      }
+      if(depth < 0) depth = 0;
+    }
+  }
+  return out;
+}
+
+/* Parse items from raw AI text. Accepts a bare array OR an object like {"items":[...]}.
+   Keeps the optional `lesson` / `level` tags used to route batched items back to the right slot. */
 function feParseItems(raw){
   if(!raw) return [];
-  // Strip markdown fences
-  raw = raw.replace(/^\s*```json/i,'').replace(/^\s*```/,'').replace(/```\s*$/,'').trim();
-  // Extract first [...] block
+  raw = String(raw).replace(/^\s*```json/i,'').replace(/^\s*```/,'').replace(/```\s*$/,'').trim();
+  const fixCommas = s => s.replace(/,\s*([}\]])/g,'$1').replace(/}\s*{/g,'},{');
+  const fixSmart  = s => fixCommas(s.replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'"));
+  let arr = null;
   const m = raw.match(/\[[\s\S]*\]/);
-  if(!m) return [];
-  let block = m[0]
-    .replace(/[\u201C\u201D]/g,'"').replace(/[\u2018\u2019]/g,"'")  // smart quotes
-    .replace(/,\s*([}\]])/g,'$1')                                    // trailing commas
-    .replace(/}\s*{/g,'},{');                                        // missing comma between objects
-  try{
-    const arr = JSON.parse(block);
-    if(!Array.isArray(arr)) return [];
-    return arr
-      .filter(it => it && typeof it.question==='string' && it.question.trim() && Array.isArray(it.choices))
-      .map(it=>({
+  if(m){
+    /* Try as-is first (curly quotes are valid inside JSON strings); only normalise them as a fallback */
+    for(const fix of [fixCommas, fixSmart]){
+      try{ const a = JSON.parse(fix(m[0])); if(Array.isArray(a)){ arr = a; break; } }catch(_){}
+    }
+  }
+  if(!arr) arr = feSalvageObjects(raw);
+  return arr
+    .filter(it => it && typeof it.question==='string' && it.question.trim() && Array.isArray(it.choices))
+    .map(it=>{
+      let ch = it.choices.map(c=>String(c||'').trim());
+      /* Strip "A. " / "B) " prefixes the model sometimes adds (only if ALL choices have them) */
+      if(ch.length && ch.every(c => /^[A-Da-d][\.\)]\s+/.test(c))) ch = ch.map(c => c.replace(/^[A-Da-d][\.\)]\s+/, ''));
+      ch = ch.length===4 ? ch.map(c=>c||'—') : [...ch, 'Option C','Option D'].slice(0,4);
+      return {
         question: it.question.trim(),
-        choices:  it.choices.length===4
-          ? it.choices.map(c=>String(c||'').trim()||'—')
-          : [...it.choices.map(c=>String(c||'').trim()), 'Option C','Option D'].slice(0,4),
-        answer: String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A')
-      }));
-  }catch(e){ return []; }
+        choices:  ch,
+        answer:   String(it.answer||'A').toUpperCase().replace(/[^A-D]/g,'A').charAt(0) || 'A',
+        lesson:   parseInt(it.lesson) || 0,
+        level:    parseInt(it.level)  || 0
+      };
+    });
+}
+
+/* ── Batching helpers ── */
+
+/* Pack cells (lesson × cog level) into as few calls as possible, keeping a lesson's levels together */
+function feBuildBatches(cells, maxItems){
+  const sorted = cells.slice().sort((a,b)=> a.task.lessonIdx - b.task.lessonIdx || a.task.cogIdx - b.task.cogIdx);
+  const batches = [];
+  let cur = [], curN = 0;
+  sorted.forEach(c => {
+    if(cur.length && curN + c.count > maxItems){ batches.push(cur); cur = []; curN = 0; }
+    cur.push(c); curN += c.count;
+  });
+  if(cur.length) batches.push(cur);
+  return batches;
+}
+
+function feBatchLessonOrder(cells){
+  const order = [];
+  cells.forEach(c => { if(!order.includes(c.task.lessonIdx)) order.push(c.task.lessonIdx); });
+  return order;
+}
+
+function feBatchLabel(batch){
+  const topics = [];
+  batch.forEach(c => { const t = c.task.lesson.topic; if(!topics.includes(t)) topics.push(t); });
+  const n = batch.reduce((s,c)=>s+c.count,0);
+  let label = topics.slice(0,2).map(t => '"' + (t.length > 32 ? t.slice(0,30) + '…' : t) + '"').join(', ');
+  if(topics.length > 2) label += ' +' + (topics.length - 2) + ' more';
+  return label + ' (' + n + ' item' + (n>1?'s':'') + ')';
+}
+
+/* Reference text for one call: each lesson's own files first (budget split evenly),
+   global upload only for lessons that have no files of their own. */
+function feBuildBatchRef(cells, order, globalRef){
+  const lessonOf = li => cells.find(c => c.task.lessonIdx === li).task.lesson;
+  const own = order.filter(li => (lessonOf(li).refFiles || []).length);
+  const per = own.length ? Math.floor(FE_MAX_REF_CHARS / own.length) : 0;
+  const parts = [];
+  own.forEach(li => {
+    const txt = lessonOf(li).refFiles.map((f,fi)=>`--- FILE ${fi+1}: ${f.name} ---\n${f.text}`).join('\n\n').slice(0, per);
+    parts.push(`[LESSON ${order.indexOf(li)+1}]\n${txt}`);
+  });
+  if(globalRef && order.some(li => !(lessonOf(li).refFiles || []).length))
+    parts.push(`[GENERAL]\n${String(globalRef).slice(0, FE_MAX_REF_CHARS)}`);
+  return parts.join('\n\n');
+}
+
+function feBuildBatchPrompt(cells, ctx){
+  const { subject, grade, isFil, globalRef } = ctx;
+  const order = feBatchLessonOrder(cells);
+  const need  = c => c.count - c.items.length;
+  const total = cells.reduce((s,c)=>s+need(c), 0);
+
+  const spec = order.map(li => {
+    const lc = cells.filter(c => c.task.lessonIdx === li);
+    const l  = lc[0].task.lesson;
+    const n  = order.indexOf(li) + 1;
+    const head = isFil
+      ? (l.competency ? `ARALIN ${n} — Kasanayan sa Pagkatuto: "${l.competency}" (Paksa: "${l.topic}")` : `ARALIN ${n} — Paksa/Aralin: "${l.topic}"`)
+      : (l.competency ? `LESSON ${n} — Learning Competency: "${l.competency}" (Topic: "${l.topic}")` : `LESSON ${n} — Topic/Lesson: "${l.topic}"`);
+    const lines = lc.map(c => {
+      const k = need(c);
+      return isFil
+        ? `   • level ${c.task.cogIdx+1} — ${c.task.cogShort} (${c.task.cogDiff}): ${k} tanong`
+        : `   • level ${c.task.cogIdx+1} — ${c.task.cogShort} (${c.task.cogDiff}): ${k} question${k>1?'s':''}`;
+    }).join('\n');
+    return head + '\n' + lines;
+  }).join('\n\n');
+
+  const ref = feBuildBatchRef(cells, order, globalRef);
+  const refBlock = !ref ? '' : (isFil
+    ? `\nSANGGUNIANG NILALAMAN (ibatay ang mga tanong dito kung may kaugnayan sa aralin; ang [LESSON n] ay para sa ARALIN n):\n"""\n${ref}\n"""\n`
+    : `\nREFERENCE CONTENT (base the questions on this material when relevant; [LESSON n] belongs to LESSON n):\n"""\n${ref}\n"""\n`);
+
+  const example = '{"items":[{"lesson":1,"level":1,"question":"' + (isFil ? 'Tanong dito?' : 'Question text here?') +
+    '","choices":["' + (isFil ? 'Pagpipilian A","Pagpipilian B","Pagpipilian C","Pagpipilian D' : 'Choice A text","Choice B text","Choice C text","Choice D text') +
+    '"],"answer":"A"}]}';
+
+  return isFil
+? `Ikaw ay isang guro na gumagawa ng Pangwakas na Pagsusulit (Final Examination) sa ${subject} para sa ${grade}.
+
+Gumawa ng mga tanong na may apat na pagpipilian (multiple choice) para sa mga aralin sa ibaba. Para sa BAWAT aralin at antas ng pag-iisip, gumawa ng EKSAKTONG bilang ng tanong na nakasulat.
+
+${spec}
+${refBlock}
+Mga Panuntunan:
+- Kabuuang bilang: eksaktong ${total} tanong. Huwag magbigay ng mas kaunti.
+- Lagyan ng "lesson" (numero ng ARALIN) at "level" (1–4) ang bawat tanong, ayon sa listahan sa itaas.
+- Ang bawat tanong ay dapat tumugma sa antas ng pag-iisip nito.
+- Bawat tanong ay may eksaktong 4 na pagpipilian (huwag ilagay ang "A.", "B." sa mismong teksto ng pagpipilian).
+- Isang tamang sagot lang bawat tanong — walang dalawang pagpipilian na parehong tama o parehong maaaring tama.
+- Siguraduhing ang letra sa "answer" (A, B, C, o D) ay TUMUTUGMA nang eksakto sa tamang pagpipilian sa "choices". Bago sumagot, balikan at tingnan muli.
+- ISULAT SA FILIPINO — simpleng salita na naiintindihan ng mga mag-aaral ng Grades 4–6. Iwasan ang masyadong malalim o pormal na salita.
+- Huwag isama ang letra ng sagot sa loob ng tanong. Huwag magulit ng tanong.
+- Sumagot LAMANG ng valid JSON. Walang markdown, walang backticks, walang paliwanag.
+
+${example}`
+: `You are a school teacher writing a Final Examination for ${grade} ${subject}.
+
+Write multiple choice questions for the lessons below. For EACH lesson and cognitive level, write EXACTLY the number of questions listed.
+
+${spec}
+${refBlock}
+Rules:
+- Total: exactly ${total} questions. Do not return fewer.
+- Tag every question with its "lesson" number and "level" number (1-4) exactly as listed above.
+- Every question MUST match the cognitive level it is tagged with.
+- Each question has exactly 4 choices (do NOT put "A.", "B." inside the choice text).
+- Exactly one correct answer per question — no two choices may both be correct or both be defensible as correct.
+- The "answer" letter (A, B, C, or D) MUST match the actually correct choice in "choices" exactly. Re-check each item before responding.
+- Language appropriate for ${grade} level.
+- Do NOT include the answer letter inside the question text. Do not repeat or closely reword a question.
+- Respond ONLY with valid JSON. No markdown, no backticks, no explanation.
+
+${example}`;
+}
+
+/* Route parsed items back to their (lesson, level) slot; untagged/mis-tagged extras fill any gap in order */
+function feDistributeItems(items, cells, ctx){
+  const order = feBatchLessonOrder(cells);
+  const need  = c => c.count - c.items.length;
+  const norm  = q => String(q).toLowerCase().replace(/[^a-z0-9\u00C0-\u024F]+/g,' ').trim();
+  const leftovers = [];
+  items.forEach(it => {
+    const key = norm(it.question);
+    if(ctx.seen.has(key)) return;               /* drop duplicate questions */
+    ctx.seen.add(key);
+    const li = order[(it.lesson || 0) - 1];
+    const cell = (li === undefined || !it.level) ? null
+      : cells.find(c => c.task.lessonIdx === li && c.task.cogIdx === it.level - 1 && need(c) > 0);
+    if(cell) cell.items.push(it); else leftovers.push(it);
+  });
+  leftovers.forEach(it => {
+    const cell = cells.find(c => need(c) > 0);
+    if(cell) cell.items.push(it);
+  });
+}
+
+/* Key rotation: get ONE raw AI response. Never loops forever — pauses (and auto-resumes) when
+   every key is exhausted. Throws Error('Cancelled') if the run was aborted. */
+async function feCallRaw(prompt){
+  for(let guard = 0; guard < 60; guard++){
+    if(feGenAbort) throw new Error('Cancelled');
+    const apiKey = getActiveKey();
+    if(!apiKey){
+      feGenPause('🚫 All API keys hit their quota. Add a new key or reset quotas — generation resumes automatically (or click Resume).');
+      await feWaitForResume();
+      continue;
+    }
+    const keyObj   = mkKeys[mkActive] || {};
+    const provider = feDetectProvider(apiKey, keyObj.provider);
+    try{
+      return await feRawCall(prompt, apiKey, provider);
+    } catch(e){
+      if(e.message !== 'QUOTA') throw e;
+      markQuota(apiKey);        /* confirmed daily/exhausted quota → next loop picks the next key */
+    }
+  }
+  throw new Error('Could not complete the request — all keys are over quota.');
+}
+
+/* Generate one batch; retries ONLY the still-missing slots (never regenerates what it already has) */
+async function feGenerateBatch(batch, ctx){
+  const MAX_ATTEMPTS = 3;
+  let lastErr = null;
+  for(let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++){
+    if(feGenAbort) return;
+    const pending = batch.filter(c => c.items.length < c.count);
+    if(!pending.length) return;
+    try{
+      const raw = await feCallRaw(feBuildBatchPrompt(pending, ctx));
+      feDistributeItems(feParseItems(raw), pending, ctx);
+      lastErr = null;
+    } catch(e){
+      if(e.message === 'Cancelled') return;
+      lastErr = e;
+      if(FE_FATAL_RE.test(e.message || '')){ e.fatal = true; throw e; }
+    }
+    if(attempt < MAX_ATTEMPTS && batch.some(c => c.items.length < c.count)) await feSleep(2500 * attempt);
+  }
+  if(lastErr) throw lastErr;
 }
 
 /* ── Alphabetize each item's 4 choices (A→D by text) and keep the
@@ -729,7 +991,14 @@ function feGenResume(){
 }
 
 function feWaitForResume(){
-  return new Promise(resolve => { _feResolvePause = resolve; });
+  /* Resolves when the user clicks Resume, OR automatically as soon as a usable key exists
+     (e.g. they reset quotas / added a key in the API Key Manager) — no more waiting forever. */
+  return new Promise(resolve => {
+    let poll = null;
+    const done = () => { clearInterval(poll); _feResolvePause = null; resolve(); };
+    _feResolvePause = done;
+    poll = setInterval(() => { if(feGenAbort || getActiveKey()) feGenResume(); }, 2000);
+  });
 }
 
 function feUserResume(){
