@@ -224,7 +224,17 @@ async function feGenerate(){
   const gstat = document.getElementById('feGStatTxt');
   gp.classList.add('show');
   gfill.style.width = '0%';
+  gfill.style.background = '';
+  const prevItems = feExamItems;   // restored if the user cancels
   feExamItems = [];
+  const cancelBtn = document.getElementById('feCancelBtn');
+  if(cancelBtn){ cancelBtn.style.display = ''; cancelBtn.disabled = false; cancelBtn.textContent = '✕ Cancel Generation'; }
+  const cancelPromise = new Promise(res => { _feCancelResolve = res; });
+  const genStart = Date.now();
+  const fmtTime = s => Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+  let progTimer = null;
+  const stopProgress = () => { if(progTimer){ clearInterval(progTimer); progTimer = null; } };
+  gstat.textContent = 'Preparing generation\u2026';
 
   const subject = document.getElementById('feMSub')?.value  || tos.meta?.subject || 'the subject';
   const grade   = document.getElementById('feMGrade')?.value || tos.meta?.grade   || 'Elementary';
@@ -281,13 +291,31 @@ async function feGenerate(){
     for(const batch of batches){
       if(feGenAbort) break;
       const done = taskItems.reduce((s, a) => s + a.length, 0);
-      gstat.textContent =
-        `Generating items ${done+1}\u2013${Math.min(done + batch.total, totalItems)} of ${totalItems}` +
-        (round > 1 ? ' (filling gaps)' : '') + '\u2026';
-      gfill.style.width = Math.round(done / totalItems * 90) + '%';
+      const batchNo = batches.indexOf(batch) + 1;
+      const baseP = done / totalItems * 90;
+      const spanP = Math.max(1, batch.total / totalItems * 90);
+      const estSec = Math.max(8, batch.total * 0.7);   // rough guess; the bar eases toward ~95% of this request's share
+      const t0 = Date.now();
+      const paint = () => {
+        if(typeof _feResolvePause === 'function') return;   // paused — leave the pause message alone
+        const el = (Date.now() - t0) / 1000;
+        const frac = 1 - Math.exp(-el / (estSec / 2.2));
+        const pct = baseP + spanP * Math.min(0.95, frac);
+        gfill.style.width = pct.toFixed(1) + '%';
+        gstat.textContent =
+          `Generating items ${done+1}\u2013${Math.min(done + batch.total, totalItems)} of ${totalItems}` +
+          ` \u00b7 request ${batchNo}/${batches.length}` + (round > 1 ? ' (filling gaps)' : '') +
+          ` \u00b7 ${Math.round(pct)}% \u00b7 ${fmtTime(Math.floor((Date.now() - genStart) / 1000))} elapsed`;
+      };
+      stopProgress(); paint(); progTimer = setInterval(paint, 500);
 
       try{
-        const parsed = await feCallBatchAPI(feBuildBatchPrompt(batch, tasks, genCtx), batch.total);
+        const parsed = await Promise.race([
+          feCallBatchAPI(feBuildBatchPrompt(batch, tasks, genCtx), batch.total),
+          cancelPromise.then(() => [])
+        ]);
+        stopProgress();
+        if(feGenAbort) break;
         const leftovers = [];
         parsed.forEach(it => {
           const sp = batch.specs[(it.spec | 0) - 1];
@@ -305,6 +333,7 @@ async function feGenerate(){
         });
       } catch(e){
         console.error('Error:', e);
+        stopProgress();
         toast('⚠️ Generation error: ' + e.message, 'te');
         stopGen = true;   // don't keep hammering the API (and quota) after a real error
         break;
@@ -312,7 +341,26 @@ async function feGenerate(){
     }
 
     const after = taskItems.reduce((s, a) => s + a.length, 0);
+    stopProgress();
+    gfill.style.width = Math.round(after / totalItems * 90) + '%';
     if(after === before) break;   // no progress this pass — stop spending requests
+  }
+
+  stopProgress();
+  _feCancelResolve = null;
+  if(feGenAbort){
+    /* User cancelled — keep whatever exam was there before and reset the UI */
+    feExamItems = prevItems;
+    const cb = document.getElementById('feCancelBtn'); if(cb) cb.style.display = 'none';
+    const rb = document.getElementById('feResumeBtn'); if(rb) rb.style.display = 'none';
+    const sp = document.getElementById('feGenSpin');   if(sp) sp.style.display = '';
+    genBtn.disabled = false; genBtn.style.display = ''; genBtn.textContent = '🤖 Generate Final Exam';
+    gfill.style.background = '';
+    _feResolvePause = null;
+    gstat.textContent = '⛔ Generation cancelled.';
+    setTimeout(() => gp.classList.remove('show'), 1800);
+    toast('⛔ Generation cancelled.', 'ts');
+    return;
   }
 
   /* ── Assemble final exam in TOS order (cognitive level → lesson) ── */
@@ -359,6 +407,8 @@ async function feGenerate(){
   if(resumeBtn2) resumeBtn2.style.display = 'none';
   if(spin2)      spin2.style.display = '';
   _feResolvePause = null; // clear any pending pause
+  const cancelBtn2 = document.getElementById('feCancelBtn');
+  if(cancelBtn2) cancelBtn2.style.display = 'none';
 
   if(feExamItems.length){
     gstat.textContent = '✅ ' + feExamItems.length + ' items generated!';
@@ -512,7 +562,7 @@ async function feCallBatchAPI(prompt, count){
     if(!apiKey){
       feGenPause('⚠️ All API keys hit quota. Add a new key then click Resume.');
       await feWaitForResume();
-      if(!getActiveKey()) return [];
+      if(feGenAbort || !getActiveKey()) return [];
       continue;
     }
 
@@ -524,6 +574,7 @@ async function feCallBatchAPI(prompt, count){
 
     for(let attempt = 1; attempt <= MAX_ATTEMPTS && !keyExhausted; attempt++){
       try{
+        if(feGenAbort) return [];
         const raw   = await feRawCall(prompt, apiKey, provider, maxTokens);
         const items = feParseItems(raw);
         if(items.length) return items;
@@ -891,6 +942,16 @@ async function feCallAnthropicAPI(prompt, needed, cogShort, topicLabel, isFilipi
 
 /* ── Pause / Resume helpers for exam generation ── */
 let _feResolvePause = null;
+let _feCancelResolve = null;
+
+/* Cancel button: stop generating, release any pause, and unblock the pending request wait */
+function feCancelGenerate(){
+  feGenAbort = true;
+  const b = document.getElementById('feCancelBtn');
+  if(b){ b.disabled = true; b.textContent = 'Cancelling\u2026'; }
+  if(typeof _feResolvePause === 'function'){ try{ _feResolvePause(); }catch(e){} }
+  if(_feCancelResolve) _feCancelResolve('cancel');
+}
 
 function feGenPause(msg){
   const gstat     = document.getElementById('feGStatTxt');

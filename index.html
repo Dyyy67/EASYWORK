@@ -669,6 +669,11 @@
       <div class="gstat" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <div class="spin" id="feGenSpin"></div>
         <span id="feGStatTxt">Generating exam questions…</span>
+        <button id="feCancelBtn" onclick="feCancelGenerate()"
+          style="margin-left:auto;background:#C62828;color:#fff;border:none;
+            border-radius:6px;padding:5px 14px;font-size:12px;font-weight:800;cursor:pointer;">
+          ✕ Cancel Generation
+        </button>
         <button id="feResumeBtn" onclick="feUserResume()"
           style="display:none;margin-left:auto;background:#E65100;color:#fff;border:none;
             border-radius:6px;padding:5px 14px;font-size:12px;font-weight:800;cursor:pointer;
