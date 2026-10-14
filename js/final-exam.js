@@ -244,102 +244,99 @@ async function feGenerate(){
      row has no reference files of its own. Item count & order still come from the TOS. */
   const feGlobalRefContext = feBuildRefContext();
 
-  /* ── Step 5: Generate each task ── */
-  for(const task of tasks){
-    if(feGenAbort) break;
+  /* ── Step 5: Generate in BATCHES (quota-friendly) ──
+     Previously ONE API request was made for every (cognitive level × lesson) block —
+     typically 20-40+ requests per exam, which used up a free-tier key on a single exam.
+     Now many blocks are packed into ONE request (up to what the provider can safely
+     return), so a whole exam normally needs only 1-3 requests. TOS counts and ordering
+     are unchanged: every requested question is tagged with its block number ("spec")
+     and routed back to the correct lesson / cognitive level. Any shortfall is topped up
+     in a small follow-up request; if a pass makes no progress we stop instead of
+     burning more quota. */
+  const taskItems = tasks.map(() => []);   // collected questions per task
+  const MAX_ROUNDS = 3;                    // 1 main pass + up to 2 top-up passes
+  const genCtx = { subject, grade, isFil: isFilipinoSubject, globalRef: feGlobalRefContext };
+  let stopGen = false;
 
-    gstat.textContent =
-      `[${tasksDone+1}/${totalTasks}] "${task.lesson.topic}" — ${task.cogShort} (${task.count} item${task.count>1?'s':''})…`;
-    gfill.style.width = Math.round(tasksDone / totalTasks * 90) + '%';
+  for(let round = 1; round <= MAX_ROUNDS && !stopGen && !feGenAbort; round++){
+    const needs = tasks.map((t, i) => t.count - taskItems[i].length);
+    if(needs.every(n => n <= 0)) break;
+    const before = taskItems.reduce((s, a) => s + a.length, 0);
 
-    const competencyLine = task.lesson.competency
-      ? `Learning Competency: "${task.lesson.competency}"`
-      : `Topic/Lesson: "${task.lesson.topic}"`;
+    /* Pack the outstanding blocks into as few requests as the provider allows */
+    const lim = feProviderLimits(feActiveProvider());
+    const batches = [];
+    let cur = null;
+    tasks.forEach((t, i) => {
+      let need = needs[i];
+      while(need > 0){
+        const take = Math.min(need, lim.items);
+        if(!cur || cur.total + take > lim.items){ cur = { specs: [], total: 0 }; batches.push(cur); }
+        cur.specs.push({ ti: i, need: take, got: 0 });
+        cur.total += take;
+        need -= take;
+      }
+    });
 
-    /* Per-competency reference files take priority; fall back to the global upload */
-    const lessonRefFiles = task.lesson.refFiles || [];
-    const feRefContext = lessonRefFiles.length
-      ? lessonRefFiles.map((f,fi)=>`--- FILE ${fi+1}: ${f.name} ---\n${f.text}`).join('\n\n').slice(0,12000)
-      : feGlobalRefContext;
+    for(const batch of batches){
+      if(feGenAbort) break;
+      const done = taskItems.reduce((s, a) => s + a.length, 0);
+      gstat.textContent =
+        `Generating items ${done+1}\u2013${Math.min(done + batch.total, totalItems)} of ${totalItems}` +
+        (round > 1 ? ' (filling gaps)' : '') + '\u2026';
+      gfill.style.width = Math.round(done / totalItems * 90) + '%';
 
-    const refLineFil = feRefContext
-      ? `\nSANGGUNIANG NILALAMAN (ibatay ang mga tanong dito kung may kaugnayan sa aralin):\n"""\n${feRefContext}\n"""\n`
-      : '';
-    const refLineEn = feRefContext
-      ? `\nREFERENCE CONTENT (base the questions on this material when relevant to the lesson):\n"""\n${feRefContext}\n"""\n`
-      : '';
-
-    const prompt = isFilipinoSubject
-? `Ikaw ay isang guro na gumagawa ng Pangwakas na Pagsusulit (Final Examination) sa ${subject} para sa ${grade}.
-${competencyLine}
-Antas ng Pag-iisip (Cognitive Level): ${task.cogLabel} (${task.cogDiff})
-${refLineFil}
-
-Gumawa ng eksaktong ${task.count} tanong na may apat na pagpipilian (multiple choice) sa antas na "${task.cogShort}" tungkol sa araling ito.
-
-Mga Panuntunan:
-- Lahat ng tanong ay dapat nasa "${task.cogShort}" na antas ng pag-iisip (${task.cogDiff}).
-- Bawat tanong ay may eksaktong 4 na pagpipilian: A, B, C, D.
-- Isang tamang sagot lang bawat tanong — walang dalawang pagpipilian na parehong tama o parehong maaaring tama.
-- Siguraduhing ang letra sa "answer" (A, B, C, o D) ay TUMUTUGMA nang eksakto sa tamang pagpipilian sa "choices". Bago sumagot, balikan at tingnan muli kung tama ang letrang inilagay mo.
-- ISULAT SA FILIPINO — simpleng salita na naiintindihan ng mga mag-aaral ng Grades 4–6.
-- Huwag isama ang letra ng sagot sa loob ng tanong.
-- Sumagot LAMANG ng valid JSON array. Walang markdown, walang backticks, walang paliwanag bago o pagkatapos.
-
-[
-  {
-    "question": "Tanong dito?",
-    "choices": ["Pagpipilian A", "Pagpipilian B", "Pagpipilian C", "Pagpipilian D"],
-    "answer": "A"
-  }
-]`
-:
-`You are a school teacher writing a Final Examination for ${grade} ${subject}.
-${competencyLine}
-Cognitive Level: ${task.cogLabel} (${task.cogDiff})
-${refLineEn}
-
-Generate exactly ${task.count} multiple choice question${task.count>1?'s':''} at the "${task.cogShort}" cognitive level about this lesson/competency.
-
-Rules:
-- All questions MUST be at the "${task.cogShort}" cognitive level (${task.cogDiff}).
-- Each question has exactly 4 choices: A, B, C, D.
-- Exactly one correct answer per question — no two choices may both be correct or both be defensible as correct.
-- The "answer" letter (A, B, C, or D) MUST match the actually correct choice in "choices" exactly. Re-check each item before responding to confirm the letter is accurate.
-- Language appropriate for ${grade} level.
-- Do NOT include the answer letter inside the question text.
-- Respond ONLY with a valid JSON array. No markdown, no backticks, no explanation before or after.
-
-[
-  {
-    "question": "Question text here?",
-    "choices": ["Choice A text", "Choice B text", "Choice C text", "Choice D text"],
-    "answer": "A"
-  }
-]`;
-
-    try{
-      const items = await feCallAnthropicAPI(prompt, task.count, task.cogShort, task.lesson.topic, isFilipinoSubject);
-      /* items is ALWAYS exactly task.count long (padded if needed) */
-      items.forEach(it => {
-        /* Alphabetize choices A→D and re-map the correct answer letter to match */
-        const alpha = feAlphabetizeChoices(it.choices, it.answer);
-        feExamItems.push({
-          num:        globalNum++,
-          topic:      task.lesson.topic,
-          competency: task.lesson.competency,
-          cogLabel:   task.cogLabel,
-          cogIdx:     task.cogIdx,
-          question:   it.question,
-          choices:    alpha.choices,
-          answer:     alpha.answer
+      try{
+        const parsed = await feCallBatchAPI(feBuildBatchPrompt(batch, tasks, genCtx), batch.total);
+        const leftovers = [];
+        parsed.forEach(it => {
+          const sp = batch.specs[(it.spec | 0) - 1];
+          if(sp){
+            if(sp.got < sp.need && taskItems[sp.ti].length < tasks[sp.ti].count){
+              taskItems[sp.ti].push(it); sp.got++;
+            }
+          } else {
+            leftovers.push(it);   // model forgot the block number — assign in order below
+          }
         });
+        leftovers.forEach(it => {
+          const sp = batch.specs.find(s => s.got < s.need);
+          if(sp){ taskItems[sp.ti].push(it); sp.got++; }
+        });
+      } catch(e){
+        console.error('Error:', e);
+        toast('⚠️ Generation error: ' + e.message, 'te');
+        stopGen = true;   // don't keep hammering the API (and quota) after a real error
+        break;
+      }
+    }
+
+    const after = taskItems.reduce((s, a) => s + a.length, 0);
+    if(after === before) break;   // no progress this pass — stop spending requests
+  }
+
+  /* ── Assemble final exam in TOS order (cognitive level → lesson) ── */
+  let paddedCount = 0;
+  tasks.forEach((task, i) => {
+    const got = taskItems[i].slice(0, task.count);
+    got.forEach(it => {
+      /* Alphabetize choices A→D and re-map the correct answer letter to match */
+      const alpha = feAlphabetizeChoices(it.choices, it.answer);
+      feExamItems.push({
+        num:        globalNum++,
+        topic:      task.lesson.topic,
+        competency: task.lesson.competency,
+        cogLabel:   task.cogLabel,
+        cogIdx:     task.cogIdx,
+        question:   it.question,
+        choices:    alpha.choices,
+        answer:     alpha.answer
       });
-    } catch(e){
-      console.error('Error:', e);
-      toast('⚠️ Error for "' + task.lesson.topic + '" (' + task.cogShort + '): ' + e.message, 'te');
-      /* Still pad so total item count stays correct */
-      for(let p = 0; p < task.count; p++){
+    });
+    /* Still pad so total item count stays correct (skipped if the user aborted) */
+    if(!feGenAbort){
+      for(let p = got.length; p < task.count; p++){
+        paddedCount++;
         feExamItems.push({
           num: globalNum++, topic: task.lesson.topic, competency: task.lesson.competency,
           cogLabel: task.cogLabel, cogIdx: task.cogIdx,
@@ -348,9 +345,8 @@ Rules:
         });
       }
     }
-
-    tasksDone++;
-  }
+  });
+  if(paddedCount) toast('⚠️ ' + paddedCount + ' item(s) could not be generated and are marked "(regenerate)".', 'te');
 
   gfill.style.width = '100%';
   gfill.style.background = ''; // restore default color
@@ -380,6 +376,186 @@ Rules:
 }
 
 
+/* ════════════════════════════════════════════════════════════════
+   BATCHED GENERATION HELPERS (quota-saver)
+   One API request now covers many (lesson × cognitive level) blocks.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Max questions per request + max output tokens, per provider
+   (kept inside each provider's output-token limit). */
+function feProviderLimits(provider){
+  const L = {
+    gemini:   {items:60, tokens:16384},
+    openai:   {items:60, tokens:16384},
+    groq:     {items:25, tokens:6144},
+    mistral:  {items:40, tokens:8192},
+    deepseek: {items:40, tokens:8192}
+  };
+  return L[provider] || {items:15, tokens:4096};
+}
+
+/* Provider of the key that will be used next */
+function feActiveProvider(){
+  const k = getActiveKey();
+  if(!k) return 'gemini';
+  return feDetectProvider(k, (mkKeys[mkActive]||{}).provider);
+}
+
+/* Build ONE prompt covering several (lesson × cognitive level) blocks.
+   Each block is numbered; the model must echo that number in "spec" so every
+   question can be routed back to the right lesson / cognitive level. */
+function feBuildBatchPrompt(batch, tasks, ctx){
+  const { subject, grade, isFil, globalRef } = ctx;
+
+  /* Reference material: once per distinct lesson in this batch. Per-lesson files take
+     priority; the global upload is the fallback for lessons without their own files. */
+  const lessonIdxs = [...new Set(batch.specs.map(s => tasks[s.ti].lessonIdx))];
+  const perLessonCap = Math.min(12000, Math.max(2500, Math.floor(24000 / lessonIdxs.length)));
+  const refBlocks = [];
+  let needsGlobal = false;
+  lessonIdxs.forEach(li => {
+    const lesson = tasks.find(x => x.lessonIdx === li).lesson;
+    const files = lesson.refFiles || [];
+    if(files.length){
+      const txt = files.map((f,fi)=>`--- FILE ${fi+1}: ${f.name} ---\n${f.text}`).join('\n\n').slice(0, perLessonCap);
+      refBlocks.push(`### ${lesson.topic}\n${txt}`);
+    } else {
+      needsGlobal = true;
+    }
+  });
+  if(needsGlobal && globalRef) refBlocks.push(`### General reference\n${String(globalRef).slice(0, 16000)}`);
+  const refText = refBlocks.join('\n\n');
+
+  const blocks = batch.specs.map((s, n) => {
+    const t = tasks[s.ti];
+    const focus = t.lesson.competency
+      ? `${isFil ? 'Kasanayan' : 'Learning Competency'}: "${t.lesson.competency}" (${isFil ? 'Aralin' : 'Lesson'}: ${t.lesson.topic})`
+      : `${isFil ? 'Aralin' : 'Topic/Lesson'}: "${t.lesson.topic}"`;
+    return isFil
+      ? `[${n+1}] ${focus} | Antas ng Pag-iisip: ${t.cogLabel} (${t.cogDiff}) | Bilang ng tanong: ${s.need}`
+      : `[${n+1}] ${focus} | Cognitive Level: ${t.cogLabel} (${t.cogDiff}) | Questions needed: ${s.need}`;
+  }).join('\n');
+
+  if(isFil){
+    return `Ikaw ay isang guro na gumagawa ng Pangwakas na Pagsusulit (Final Examination) sa ${subject} para sa ${grade}.
+
+Gumawa ng mga tanong na may apat na pagpipilian (multiple choice) para sa bawat BLOKE sa ibaba. Bawat bloke ay may aralin/kasanayan, antas ng pag-iisip, at eksaktong bilang ng tanong.
+
+MGA BLOKE:
+${blocks}
+${refText ? `\nSANGGUNIANG NILALAMAN (ibatay ang mga tanong dito kung may kaugnayan sa aralin):\n"""\n${refText}\n"""\n` : ''}
+Mga Panuntunan:
+- Gumawa ng EKSAKTONG bilang ng tanong para sa bawat bloke (kabuuang ${batch.total}) — hindi kulang, hindi sobra.
+- Ang bawat tanong ay dapat tumutugma sa aralin/kasanayan AT sa antas ng pag-iisip ng bloke nito.
+- Ilagay sa "spec" ang numero ng bloke ng bawat tanong.
+- Bawat tanong ay may eksaktong 4 na pagpipilian: A, B, C, D.
+- Isang tamang sagot lang bawat tanong — walang dalawang pagpipilian na parehong tama o parehong maaaring tama.
+- Siguraduhing ang letra sa "answer" (A, B, C, o D) ay TUMUTUGMA nang eksakto sa tamang pagpipilian sa "choices". Bago sumagot, balikan at tingnan muli kung tama ang letrang inilagay mo.
+- ISULAT SA FILIPINO — simpleng salita na naiintindihan ng mga mag-aaral ng Grades 4–6.
+- Huwag isama ang letra ng sagot sa loob ng tanong.
+- Huwag ulitin ang magkaparehong tanong.
+- Sumagot LAMANG ng valid JSON array. Walang markdown, walang backticks, walang paliwanag bago o pagkatapos.
+
+[
+  {
+    "spec": 1,
+    "question": "Tanong dito?",
+    "choices": ["Pagpipilian A", "Pagpipilian B", "Pagpipilian C", "Pagpipilian D"],
+    "answer": "A"
+  }
+]`;
+  }
+
+  return `You are a school teacher writing a Final Examination for ${grade} ${subject}.
+
+Write multiple choice questions for each numbered BLOCK below. Every block gives a lesson/competency, a cognitive level, and the exact number of questions to write.
+
+BLOCKS:
+${blocks}
+${refText ? `\nREFERENCE CONTENT (base the questions on this material when relevant to the lesson):\n"""\n${refText}\n"""\n` : ''}
+Rules:
+- Write EXACTLY the number of questions requested for each block (${batch.total} in total) — no more, no fewer.
+- Every question MUST match its block's lesson/competency AND its cognitive level.
+- Put the block number of each question in "spec".
+- Each question has exactly 4 choices: A, B, C, D.
+- Exactly one correct answer per question — no two choices may both be correct or both be defensible as correct.
+- The "answer" letter (A, B, C, or D) MUST match the actually correct choice in "choices" exactly. Re-check each item before responding to confirm the letter is accurate.
+- Language appropriate for ${grade} level.
+- Do NOT include the answer letter inside the question text.
+- Do NOT repeat the same or near-identical questions.
+- Respond ONLY with a valid JSON array. No markdown, no backticks, no explanation before or after.
+
+[
+  {
+    "spec": 1,
+    "question": "Question text here?",
+    "choices": ["Choice A text", "Choice B text", "Choice C text", "Choice D text"],
+    "answer": "A"
+  }
+]`;
+}
+
+/* ONE request for a whole batch. Handles key rotation / pause-resume exactly like the
+   old per-task call, but with fewer attempts so a bad response never wastes much quota.
+   Returns the parsed items (may be fewer than `count`; the caller tops up shortfalls). */
+async function feCallBatchAPI(prompt, count){
+  const MAX_ATTEMPTS   = 2;
+  const MAX_KEY_ROTATE = mkKeys.length + 1;
+  let keyRotates = 0;
+
+  while(keyRotates <= MAX_KEY_ROTATE){
+    const apiKey = getActiveKey();
+    if(!apiKey){
+      feGenPause('⚠️ All API keys hit quota. Add a new key then click Resume.');
+      await feWaitForResume();
+      if(!getActiveKey()) return [];
+      continue;
+    }
+
+    const keyObj    = mkKeys[mkActive] || {};
+    const provider  = feDetectProvider(apiKey, keyObj.provider);
+    const lim       = feProviderLimits(provider);
+    const maxTokens = Math.min(lim.tokens, Math.max(1024, count * 220 + 400));
+    let keyExhausted = false;
+
+    for(let attempt = 1; attempt <= MAX_ATTEMPTS && !keyExhausted; attempt++){
+      try{
+        const raw   = await feRawCall(prompt, apiKey, provider, maxTokens);
+        const items = feParseItems(raw);
+        if(items.length) return items;
+        console.warn('feCallBatchAPI: no usable items in response (attempt ' + attempt + ')');
+        if(attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, 800));
+      } catch(e){
+        if(e.message === 'QUOTA'){
+          /* Mark this key as quota-hit and rotate */
+          markQuota(apiKey);
+          keyExhausted = true;
+          keyRotates++;
+
+          const nextKey = getActiveKey();
+          if(nextKey && nextKey !== apiKey){
+            const nextName = mkKeys[mkActive]?.name || 'next key';
+            feGenPause(`⚠️ Real quota hit confirmed. Rotating to "${nextName}"… resuming in 3s`);
+            await new Promise(r => setTimeout(r, 3000));
+            feGenResume();
+          } else {
+            feGenPause('🚫 All keys hit quota. Reset quotas or add a new key, then click Resume.');
+            await feWaitForResume();
+            keyRotates = 0; // reset so we try again
+          }
+        } else if(attempt >= MAX_ATTEMPTS){
+          throw e;
+        } else {
+          console.warn('feCallBatchAPI non-quota error, will retry:', e.message);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+    }
+    if(!keyExhausted) return [];   // attempts used up with nothing usable
+  }
+  return [];
+}
+
 /* ── AI call for Final Exam — auto-detect provider, retry until exact count ── */
 
 /* feDetectProvider moved to top of script */
@@ -388,7 +564,7 @@ Rules:
    Throws Error('QUOTA') ONLY when the API confirms a real rate-limit/quota (HTTP 429
    or the provider's documented quota error codes). All other errors are thrown as
    plain Error(message) so they do NOT trigger false quota-hit marking. */
-async function feRawCall(prompt, apiKey, provider){
+async function feRawCall(prompt, apiKey, provider, maxTokens){
   const SYS = 'You are a test-question generator. Return ONLY a valid JSON array with no markdown, no backticks, no extra text before or after the array.';
 
   /* Helper: decides if an HTTP error response is a REAL quota/rate-limit.
@@ -414,7 +590,7 @@ async function feRawCall(prompt, apiKey, provider){
   if(provider === 'openai'){
     const r = await fetch('https://api.openai.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'gpt-4o-mini', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'gpt-4o-mini', max_tokens:maxTokens||4096, temperature:0.7,
         response_format:{type:'json_object'},
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
@@ -428,7 +604,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'groq'){
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:maxTokens||4096, temperature:0.7,
         response_format:{type:'json_object'},
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
@@ -442,7 +618,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'deepseek'){
     const r = await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'deepseek-chat', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'deepseek-chat', max_tokens:maxTokens||2048, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -456,7 +632,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'mistral'){
     const r = await fetch('https://api.mistral.ai/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'mistral-small-latest', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'mistral-small-latest', max_tokens:maxTokens||4096, temperature:0.7,
         response_format:{type:'json_object'},
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
@@ -472,7 +648,7 @@ async function feRawCall(prompt, apiKey, provider){
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,
         'HTTP-Referer':'https://localhost','X-Title':'Exam Generator'},
-      body:JSON.stringify({ model:'openrouter/free', max_tokens:2048, temperature:0.7,
+      body:JSON.stringify({ model:'openrouter/free', max_tokens:maxTokens||2048, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -487,7 +663,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'nvidia'){
     const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'meta/llama-3.1-70b-instruct', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'meta/llama-3.1-70b-instruct', max_tokens:maxTokens||4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -500,7 +676,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'together'){
     const r = await fetch('https://api.together.xyz/v1/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo', max_tokens:maxTokens||4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -513,7 +689,7 @@ async function feRawCall(prompt, apiKey, provider){
   } else if(provider === 'cohere'){
     const r = await fetch('https://api.cohere.com/v2/chat',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model:'command-r-plus', max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model:'command-r-plus', max_tokens:maxTokens||4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -529,7 +705,7 @@ async function feRawCall(prompt, apiKey, provider){
     if(!baseUrl) throw new Error('Custom provider: no base URL configured.');
     const r = await fetch(baseUrl+'/chat/completions',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({ model, max_tokens:4096, temperature:0.7,
+      body:JSON.stringify({ model, max_tokens:maxTokens||4096, temperature:0.7,
         messages:[{role:'system',content:SYS},{role:'user',content:prompt}] })
     });
     if(!r.ok){
@@ -546,7 +722,7 @@ async function feRawCall(prompt, apiKey, provider){
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{role:'user',parts:[{text:SYS+'\n\n'+prompt}]}],
-        generationConfig:{temperature:0.7,maxOutputTokens:4096,responseMimeType:'application/json'}
+        generationConfig:{temperature:0.7,maxOutputTokens:maxTokens||4096,responseMimeType:'application/json',...(maxTokens?{thinkingConfig:{thinkingBudget:0}}:{})}
       })
     });
     if(!r.ok){
@@ -558,6 +734,20 @@ async function feRawCall(prompt, apiKey, provider){
     try{ return d.candidates[0].content.parts[0].text||''; }
     catch(_){ throw new Error('Unexpected Gemini response: '+JSON.stringify(d).slice(0,200)); }
   }
+}
+
+/* If the model's output got cut off mid-array, keep every COMPLETE item instead of losing the whole response */
+function feRepairTruncatedJson(block){
+  try{ JSON.parse(block); return block; }catch(_){}
+  let cut = block;
+  for(let g = 0; g < 200; g++){
+    const li = cut.lastIndexOf('}');
+    if(li < 0) break;
+    cut = cut.slice(0, li + 1);
+    try{ JSON.parse(cut + ']'); return cut + ']'; }catch(_){}
+    cut = cut.slice(0, li);
+  }
+  return block;
 }
 
 /* Parse JSON array from raw AI text */
@@ -573,11 +763,12 @@ function feParseItems(raw){
     .replace(/,\s*([}\]])/g,'$1')                                    // trailing commas
     .replace(/}\s*{/g,'},{');                                        // missing comma between objects
   try{
-    const arr = JSON.parse(block);
+    const arr = JSON.parse(feRepairTruncatedJson(block));
     if(!Array.isArray(arr)) return [];
     return arr
       .filter(it => it && typeof it.question==='string' && it.question.trim() && Array.isArray(it.choices))
       .map(it=>({
+        spec:     parseInt(it.spec, 10) || 0,
         question: it.question.trim(),
         choices:  it.choices.length===4
           ? it.choices.map(c=>String(c||'').trim()||'—')
