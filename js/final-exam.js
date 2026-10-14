@@ -454,6 +454,8 @@ Mga Panuntunan:
 - ISULAT SA FILIPINO — simpleng salita na naiintindihan ng mga mag-aaral ng Grades 4–6.
 - Huwag isama ang letra ng sagot sa loob ng tanong.
 - Huwag ulitin ang magkaparehong tanong.
+- IKLIAN ang mga tanong: hanggang 1–2 maiikling pangungusap lang ang bawat tanong (mga 30 salita pataas ang pinakamahaba), kahit sa mataas na antas ng pag-iisip (Apply, Analyze, Evaluate, Create). Iwasan ang mahahabang kuwento o senaryo.
+- Panatilihing maikli ang mga pagpipilian (karaniwan ay ilang salita lang, hindi lalampas sa isang maikling pangungusap).
 - Sumagot LAMANG ng valid JSON array. Walang markdown, walang backticks, walang paliwanag bago o pagkatapos.
 
 [
@@ -483,6 +485,8 @@ Rules:
 - Language appropriate for ${grade} level.
 - Do NOT include the answer letter inside the question text.
 - Do NOT repeat the same or near-identical questions.
+- KEEP IT SHORT: each question stem must be 1–2 concise sentences (about 30 words maximum), even for higher-order levels (Apply, Analyze, Evaluate, Create). Avoid long stories, scenarios, or multi-part stems — it must fit on a printed page.
+- Keep each choice brief (a few words, at most one short sentence).
 - Respond ONLY with a valid JSON array. No markdown, no backticks, no explanation before or after.
 
 [
