@@ -425,19 +425,9 @@ function tosXml(s){
 }
 
 /* ─── DOCX EXPORT — proper OOXML .docx via JSZip (no Word errors) ─── */
-async function tosDOCX(){
-  tosSnapshotMeta();
-  const tos=tosGet(); if(!tos){ toast('No TOS to export.','te'); return; }
-
-  /* Load JSZip from CDN if not already loaded */
-  if(typeof JSZip==='undefined'){
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-      s.onload=res; s.onerror=rej;
-      document.head.appendChild(s);
-    });
-  }
+/* Builds the Word body XML (school header + TOS table + signature lines) for ONE TOS.
+   Page setup is added once by tosDOCX() so every TOS can share the same document. */
+function tosBuildBodyXml(tos){
 
   const school  = 'UPPER KLINAN SDA SCHOOL INC';
   const addr    = 'Purok Mabinuligon, Upper Klinan, Polomolok, South Cotabato';
@@ -624,12 +614,40 @@ async function tosDOCX(){
       <w:r><w:rPr><w:szCs w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">School Head</w:t></w:r>
     </w:p>
 
-    <!-- PAGE SETUP: Legal landscape, 0.5-inch margins -->
+    `;
+
+  return bodyXml;
+}
+
+/* ─── DOCX EXPORT — ALL TOS in ONE .docx, each TOS (subject) on its own page ─── */
+async function tosDOCX(){
+  tosSnapshotMeta();   // make sure the TOS currently being edited is up to date
+  if(!tosTosList.length){ toast('No TOS to export.','te'); return; }
+
+  /* Load JSZip from CDN if not already loaded */
+  if(typeof JSZip==='undefined'){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload=res; s.onerror=rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const NS='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+
+  /* Every TOS goes on its own page */
+  const pageBreak = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+
+  /* PAGE SETUP: Legal landscape, 0.5-inch margins (applies to the whole document) */
+  const sectPr = `
     <w:sectPr>
       <w:pgSz w:w="18720" w:h="12240" w:orient="landscape"/>
       <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"
                w:header="720" w:footer="720" w:gutter="0"/>
     </w:sectPr>`;
+
+  const bodyXml = tosTosList.map(t => tosBuildBodyXml(t)).join(pageBreak) + sectPr;
 
   /* ── Assemble proper OOXML .docx package ── */
   const docXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -698,13 +716,16 @@ async function tosDOCX(){
     zip.file('word/_rels/document.xml.rels', wordRels);
 
     const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const parts=['TOS',(subject||'Subject').replace(/\s+/g,'_'),(grade||'').replace(/\s+/g,'_'),(quarter||'').replace(/\s+/g,'_')].filter(Boolean);
+    const m0=(tosTosList[0]&&tosTosList[0].meta)||{};
+    const parts=tosTosList.length>1
+      ? ['TOS','All_Subjects']
+      : ['TOS',(m0.subject||'Subject').replace(/\s+/g,'_'),(m0.grade||'').replace(/\s+/g,'_'),(m0.quarter||'').replace(/\s+/g,'_')].filter(Boolean);
     const fname=parts.join('_')+'.docx';
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url; a.download=fname; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),1500);
-    toast('✅ TOS downloaded as proper Word (.docx)!','ts');
+    toast('✅ ' + tosTosList.length + ' TOS downloaded in one Word (.docx) — each on its own page!','ts');
   }catch(e){ console.error(e); toast('❌ TOS export error: '+e.message,'te'); }
 }
 
